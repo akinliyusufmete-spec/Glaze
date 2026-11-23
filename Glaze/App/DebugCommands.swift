@@ -24,6 +24,26 @@ final class DebugCommands {
             ("pointer", { $0.modeController.exitToPointer() }),
             ("draw", { $0.modeController.select(tool: .pen) }),
             ("status", { _ in }),
+            ("pen", { $0.modeController.select(tool: .pen) }),
+            ("eraser", { $0.modeController.select(tool: .eraser) }),
+            ("undo", { $0.undo() }),
+            ("redo", { $0.redo() }),
+            ("clear", { $0.clearCurrentDisplay() }),
+            ("clearall", { $0.clearAllDisplays() }),
+            ("stress300", { env in
+                guard let window = Self.windowUnderMouse(env) else { return }
+                DebugBench.stress(env.canvasStore, display: window.displayID, size: window.frame.size)
+            }),
+            ("bench", { env in
+                guard let window = Self.windowUnderMouse(env) else { return }
+                DebugBench.run(on: window.canvas, store: env.canvasStore)
+            }),
+            ("snapshot", { env in
+                guard let window = Self.windowUnderMouse(env) else { return }
+                let url = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("glaze-\(window.displayID).png")
+                let ok = window.canvas.debugSnapshot(to: url)
+                NSLog("%@", "GLAZE-DEBUG [snapshot] \(ok ? url.path : "failed")")
+            }),
         ]
         for (name, action) in commands {
             let observer = DistributedNotificationCenter.default().addObserver(
@@ -51,6 +71,7 @@ final class DebugCommands {
                 + " front=\(front?.localizedName ?? "nil")(\(front?.processIdentifier ?? 0))"
                 + " keyWindow=\(NSApp.keyWindow.map { String(describing: type(of: $0)) } ?? "nil")",
         ]
+        let store = environment.canvasStore
         let windows = environment.overlays?.windows ?? [:]
         for (id, window) in windows.sorted(by: { $0.key < $1.key }) {
             lines.append(
@@ -59,9 +80,17 @@ final class DebugCommands {
                     + " onActiveSpace=\(window.isOnActiveSpace)"
                     + " ignoresMouse=\(window.ignoresMouseEvents) isKey=\(window.isKeyWindow)"
                     + " capturing=\(window.canvas.isCapturing)"
+                    + " tool=\(window.canvas.toolID)"
+                    + " elements=\(store.canvas(for: id).elements.count)"
+                    + " undo=\(store.undoCount(on: id)) redo=\(store.redoCount(on: id))"
             )
         }
         lines.forEach { NSLog("%@", $0) }
+    }
+
+    private static func windowUnderMouse(_ environment: AppEnvironment) -> OverlayWindow? {
+        guard let id = environment.overlays?.displayUnderMouse() else { return nil }
+        return environment.overlays?.windows[id]
     }
 }
 #endif

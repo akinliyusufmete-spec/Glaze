@@ -10,9 +10,12 @@ final class OverlayWindow: NSPanel {
     let displayID: CGDirectDisplayID
     let canvas: CanvasView
 
-    init(screen: NSScreen, displayID: CGDirectDisplayID) {
+    init(screen: NSScreen, displayID: CGDirectDisplayID, store: CanvasStore, registry: ToolRegistry) {
         self.displayID = displayID
-        self.canvas = CanvasView(frame: NSRect(origin: .zero, size: screen.frame.size))
+        self.canvas = CanvasView(
+            frame: NSRect(origin: .zero, size: screen.frame.size),
+            displayID: displayID, store: store, registry: registry
+        )
         super.init(
             contentRect: screen.frame,
             styleMask: [.borderless, .nonactivatingPanel],

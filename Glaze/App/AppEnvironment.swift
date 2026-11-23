@@ -8,6 +8,8 @@ import Observation
 final class AppEnvironment {
     let preferences = Preferences()
     let modeController = ModeController()
+    @ObservationIgnored let canvasStore = CanvasStore()
+    @ObservationIgnored let toolRegistry = ToolRegistry()
 
     @ObservationIgnored private(set) var overlays: OverlayManager?
     @ObservationIgnored private var hud: HUDController?
@@ -37,11 +39,11 @@ final class AppEnvironment {
 
     private func start() {
         guard overlays == nil else { return }
-        let overlays = OverlayManager()
+        let overlays = OverlayManager(store: canvasStore, registry: toolRegistry)
         overlays.onEscape = { [weak self] in self?.modeController.exitToPointer() }
         let focusRestorer = FocusRestorer()
         let hud = HUDController(preferences: preferences)
-        let hotkeys = Hotkeys(modeController: modeController)
+        let hotkeys = Hotkeys(modeController: modeController, environment: self)
 
         // Order matters on exit: overlays go click-through before focus is handed back.
         modeController.attach(overlays)
@@ -58,7 +60,32 @@ final class AppEnvironment {
         #endif
     }
 
-    func clearDrawings() {
-        overlays?.clearAll()
+    // DECISION: undo, redo and clear act on the display under the pointer —
+    // that's the drawing the user is looking at, and F10 makes history per display.
+    func undo() {
+        guard let id = overlays?.displayUnderMouse() else { return }
+        canvasStore.undo(on: id)
+    }
+
+    func redo() {
+        guard let id = overlays?.displayUnderMouse() else { return }
+        canvasStore.redo(on: id)
+    }
+
+    /// Clears the display under the pointer as one undoable step.
+    func clearCurrentDisplay() {
+        guard let id = overlays?.displayUnderMouse() else { return }
+        clear(id)
+    }
+
+    /// Clears every display; each clear is its own undo step on its display.
+    func clearAllDisplays() {
+        canvasStore.displayIDs.forEach(clear)
+    }
+
+    private func clear(_ id: CanvasStore.DisplayID) {
+        let canvas = canvasStore.canvas(for: id)
+        guard !canvas.isEmpty else { return }
+        canvasStore.perform(ClearCanvas(canvas: canvas), on: id)
     }
 }

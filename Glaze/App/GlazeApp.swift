@@ -25,7 +25,11 @@ private struct MenuContent: View {
         }
         Divider()
         Toggle("Show Mode HUD", isOn: Bindable(environment.preferences).showModeHUD)
-        Button("Clear Drawings") { environment.clearDrawings() }
+        Divider()
+        Button("Undo") { environment.undo() }
+        Button("Redo") { environment.redo() }
+        Button("Clear This Display") { environment.clearCurrentDisplay() }
+        Button("Clear All Displays") { environment.clearAllDisplays() }
         Divider()
         Button("Quit Glaze") { NSApp.terminate(nil) }
             .keyboardShortcut("q")
