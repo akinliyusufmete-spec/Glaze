@@ -47,3 +47,17 @@ enum PolylineGeometry {
         }
     }
 }
+
+extension PolylineGeometry {
+    /// True for a deliberate, nearly straight line: at least 20 pt long and no
+    /// point further from the start–end chord than 4 pt or 3% of its length.
+    // DECISION: thresholds for the highlighter's auto-straighten, chosen so a
+    // hand-drawn underline snaps but a gentle curve doesn't.
+    static func isNearlyStraight(_ points: [CGPoint]) -> Bool {
+        guard let first = points.first, let last = points.last, points.count > 1 else { return false }
+        let chord = hypot(last.x - first.x, last.y - first.y)
+        guard chord >= 20 else { return false }
+        let limit = max(4, chord * 0.03)
+        return points.allSatisfy { distance(from: $0, toSegment: first, last) <= limit }
+    }
+}

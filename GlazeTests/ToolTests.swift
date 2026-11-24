@@ -35,7 +35,11 @@ final class ToolTests: XCTestCase {
         XCTAssertEqual(context.performed.count, 1)
         let stroke = try XCTUnwrap(context.canvas.elements.first as? StrokeElement)
         XCTAssertEqual(stroke.id, liveID, "the committed stroke is the one shown live")
-        XCTAssertEqual(stroke.points, [CGPoint(x: 0, y: 0), CGPoint(x: 10, y: 0), CGPoint(x: 20, y: 0)])
+        // The One-Euro filter moves the middle sample; the ends are exact.
+        XCTAssertEqual(stroke.points.count, 3)
+        XCTAssertEqual(stroke.points.first, CGPoint(x: 0, y: 0))
+        XCTAssertEqual(stroke.points.last, CGPoint(x: 20, y: 0))
+        XCTAssertEqual(stroke.points[1].y, 0, accuracy: 1e-9)
         XCTAssertNil(context.lastLive)
 
         context.undo()
@@ -122,15 +126,41 @@ final class ToolTests: XCTestCase {
         let registry = ToolRegistry()
         XCTAssertTrue(registry.isImplemented(.pen))
         XCTAssertTrue(registry.isImplemented(.eraser))
-        XCTAssertFalse(registry.isImplemented(.marker))
+        XCTAssertFalse(registry.isImplemented(.rectangle))
         XCTAssertTrue(registry.makeTool(.eraser) is EraserTool)
-        XCTAssertEqual(registry.makeTool(.marker).id, .pen)
+        XCTAssertEqual(registry.makeTool(.rectangle).id, .pen)
+    }
+
+    func testRegistryRegistersEveryBrushButTheLaser() {
+        let registry = ToolRegistry()
+        for id in ToolRegistry.brushIDs {
+            XCTAssertTrue(registry.isImplemented(id), "\(id)")
+            XCTAssertEqual(registry.makeTool(id).id, id)
+        }
+        XCTAssertFalse(registry.isImplemented(.laser), "LaserTool arrives in Phase 5")
     }
 
     func testRegistryRegisterOverridesFallback() {
         let registry = ToolRegistry()
-        registry.register(.marker) { EraserTool() }
-        XCTAssertTrue(registry.isImplemented(.marker))
-        XCTAssertTrue(registry.makeTool(.marker) is EraserTool)
+        registry.register(.rectangle) { EraserTool() }
+        XCTAssertTrue(registry.isImplemented(.rectangle))
+        XCTAssertTrue(registry.makeTool(.rectangle) is EraserTool)
+    }
+
+    // MARK: Brush presets
+
+    func testHighlighterStraightensANearlyStraightDrag() throws {
+        let tool = BrushTool(id: .highlighter, style: BrushPresets.highlighter)
+        drag(tool, (0...20).map { i in p(CGFloat(i) * 5, i % 2 == 0 ? 0 : 1) })
+        let stroke = try XCTUnwrap(context.canvas.elements.first as? StrokeElement)
+        XCTAssertEqual(stroke.points.count, 2)
+        XCTAssertEqual(stroke.points.first, CGPoint(x: 0, y: 0))
+        XCTAssertEqual(stroke.points.last, CGPoint(x: 100, y: 0))
+    }
+
+    func testPenDoesNotStraighten() throws {
+        drag(BrushTool(), (0...20).map { i in p(CGFloat(i) * 5, i % 2 == 0 ? 0 : 1) })
+        let stroke = try XCTUnwrap(context.canvas.elements.first as? StrokeElement)
+        XCTAssertGreaterThan(stroke.points.count, 2)
     }
 }

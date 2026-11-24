@@ -37,11 +37,12 @@ final class CanvasView: NSView, ToolContext {
     private let store: CanvasStore
     private let registry: ToolRegistry
     private(set) var tool: any Tool
-    private let committed = CommittedLayer()
-    private let live = LiveLayer()
+    // Internal rather than private so CanvasView+Debug can drive them.
+    let committed = CommittedLayer()
+    let live = LiveLayer()
 
-    private var committedDirty = true
-    private var pendingRemoval: Set<UUID> = []
+    var committedDirty = true
+    private(set) var pendingRemoval: Set<UUID> = []
     private var gestureActive = false
     private var lastPoint: InputPoint?
 
@@ -169,8 +170,7 @@ final class CanvasView: NSView, ToolContext {
 
     override func mouseUp(with event: NSEvent) {
         guard isCapturing, gestureActive else { return super.mouseUp(with: event) }
-        lastPoint = InputPoint(event: event, in: self)
-        endGesture()
+        finishGesture(at: InputPoint(event: event, in: self))
     }
 
     override func flagsChanged(with event: NSEvent) {
@@ -178,16 +178,21 @@ final class CanvasView: NSView, ToolContext {
         tool.modifiersChanged(event.modifierFlags, context: self)
     }
 
-    private func beginGesture(at point: InputPoint) {
+    func beginGesture(at point: InputPoint) {
         if gestureActive { endGesture() }
         gestureActive = true
         lastPoint = point
         tool.begin(point, context: self)
     }
 
-    private func moveGesture(to point: InputPoint) {
+    func moveGesture(to point: InputPoint) {
         lastPoint = point
         tool.move(point, context: self)
+    }
+
+    func finishGesture(at point: InputPoint) {
+        lastPoint = point
+        endGesture()
     }
 
     /// Finishes the gesture in progress, if any, at the last known point.
@@ -213,40 +218,4 @@ final class CanvasView: NSView, ToolContext {
     override func cancelOperation(_ sender: Any?) {
         onEscape?()
     }
-
-    // MARK: Debug
-
-    #if DEBUG
-    /// Feeds a synthetic gesture point straight to the tool (benchmarks).
-    func debugInput(_ phase: DebugPhase, at location: CGPoint) {
-        let point = InputPoint(location: location, timestamp: ProcessInfo.processInfo.systemUptime)
-        switch phase {
-        case .begin: beginGesture(at: point)
-        case .move: moveGesture(to: point)
-        case .end:
-            lastPoint = point
-            endGesture()
-        }
-    }
-
-    enum DebugPhase { case begin, move, end }
-
-    /// Runs any pending committed render and live repaint now.
-    func debugFlush() {
-        updateLayer()
-        live.flush()
-    }
-
-    func debugForceFullRender() {
-        committed.render(canvas, hiding: pendingRemoval, forceFull: true)
-        committedDirty = false
-    }
-
-    /// Writes the committed bitmap with the live element on top as a PNG.
-    func debugSnapshot(to url: URL) -> Bool {
-        debugFlush()
-        guard let base = committed.makeImage() else { return false }
-        return DebugBench.writePNG(base: base, live: live.element, scale: window?.backingScaleFactor ?? 2, to: url)
-    }
-    #endif
 }

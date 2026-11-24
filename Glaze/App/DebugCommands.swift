@@ -26,6 +26,16 @@ final class DebugCommands {
             ("status", { _ in }),
             ("pen", { $0.modeController.select(tool: .pen) }),
             ("eraser", { $0.modeController.select(tool: .eraser) }),
+            ("marker", { $0.modeController.select(tool: .marker) }),
+            ("highlighter", { $0.modeController.select(tool: .highlighter) }),
+            ("pencil", { $0.modeController.select(tool: .pencil) }),
+            ("calligraphy", { $0.modeController.select(tool: .calligraphy) }),
+            ("neon", { $0.modeController.select(tool: .neon) }),
+            ("dashed", { $0.modeController.select(tool: .dashed) }),
+            ("presets", { env in
+                guard let window = Self.windowUnderMouse(env) else { return }
+                DebugPresets.draw(env.canvasStore, display: window.displayID, size: window.frame.size)
+            }),
             ("undo", { $0.undo() }),
             ("redo", { $0.redo() }),
             ("clear", { $0.clearCurrentDisplay() }),

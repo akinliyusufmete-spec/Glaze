@@ -13,4 +13,11 @@ protocol Element: Identifiable, Hashable {
     func draw(in context: CGContext)
     /// True if `point` (canvas coordinates) is within `tolerance` of the element.
     func hitTest(_ point: CGPoint, tolerance: CGFloat) -> Bool
+    /// How the element composites onto what's below it. Layers that draw
+    /// elements into separate surfaces use this to match the final result.
+    var blendMode: CGBlendMode { get }
+}
+
+extension Element {
+    var blendMode: CGBlendMode { .normal }
 }

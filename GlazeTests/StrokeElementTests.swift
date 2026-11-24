@@ -4,7 +4,12 @@ import XCTest
 final class StrokeElementTests: XCTestCase {
     func testBoundsPadByHalfWidthPlusOne() {
         let stroke = Fixtures.line(x0: 0, x1: 100, y: 50, width: 4)
-        XCTAssertEqual(stroke.bounds, CGRect(x: -3, y: 47, width: 106, height: 6))
+        // Smoothing makes the values inexact in the last bits.
+        let b = stroke.bounds
+        XCTAssertEqual(b.minX, -3, accuracy: 1e-6)
+        XCTAssertEqual(b.minY, 47, accuracy: 1e-6)
+        XCTAssertEqual(b.width, 106, accuracy: 1e-6)
+        XCTAssertEqual(b.height, 6, accuracy: 1e-6)
     }
 
     func testBoundsFollowTransform() {

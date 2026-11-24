@@ -50,4 +50,24 @@ final class PolylineGeometryTests: XCTestCase {
     func testSamplesForZeroLengthSegment() {
         XCTAssertEqual(PolylineGeometry.samples(from: a, to: a, spacing: 2), [a, a])
     }
+
+    // MARK: isNearlyStraight
+
+    func testWobblyLineIsNearlyStraight() {
+        let points = (0...20).map { CGPoint(x: CGFloat($0) * 5, y: $0 % 2 == 0 ? 0 : 2) }
+        XCTAssertTrue(PolylineGeometry.isNearlyStraight(points))
+    }
+
+    func testCurveIsNotNearlyStraight() {
+        let points = (0...20).map { i -> CGPoint in
+            let t = CGFloat(i) / 20
+            return CGPoint(x: 100 * t, y: 30 * sin(t * .pi))
+        }
+        XCTAssertFalse(PolylineGeometry.isNearlyStraight(points))
+    }
+
+    func testShortOrSinglePointIsNotNearlyStraight() {
+        XCTAssertFalse(PolylineGeometry.isNearlyStraight([a]))
+        XCTAssertFalse(PolylineGeometry.isNearlyStraight([a, CGPoint(x: 10, y: 0)]), "a tap-sized scribble stays as drawn")
+    }
 }

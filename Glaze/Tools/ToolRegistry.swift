@@ -1,4 +1,4 @@
-import Foundation
+import AppKit
 
 /// Maps tool IDs to factories. New tools register here and nowhere else.
 @MainActor
@@ -7,8 +7,18 @@ final class ToolRegistry {
 
     private var factories: [ToolID: Factory] = [:]
 
+    /// Brushes that commit strokes. The laser is a brush too but never commits;
+    /// LaserTool arrives in Phase 5.
+    static let brushIDs: [ToolID] = [.pen, .marker, .highlighter, .pencil, .calligraphy, .neon, .dashed]
+
     init() {
-        register(.pen) { BrushTool() }
+        for id in Self.brushIDs {
+            guard let style = BrushPresets.preset(for: id) else { continue }
+            // DECISION: until Phase 4's palette exists, the highlighter is yellow
+            // (a red highlighter would read as a marker) and the rest are red.
+            let color: NSColor = id == .highlighter ? .systemYellow : .systemRed
+            register(id) { BrushTool(id: id, style: style, color: color) }
+        }
         register(.eraser) { EraserTool() }
     }
 
@@ -19,7 +29,7 @@ final class ToolRegistry {
     func isImplemented(_ id: ToolID) -> Bool { factories[id] != nil }
 
     /// A fresh instance of the tool.
-    // DECISION: IDs with no tool yet (marker, shapes, …) fall back to the pen,
+    // DECISION: IDs with no tool yet (shapes, laser, …) fall back to the pen,
     // so selecting a not-yet-built tool still draws instead of doing nothing.
     func makeTool(_ id: ToolID) -> any Tool {
         (factories[id] ?? factories[.pen] ?? { BrushTool() })()
