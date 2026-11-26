@@ -21,7 +21,7 @@ struct Hint: Equatable {
 
     /// The shortcut line: the binding, "Not set" if the user cleared it, or `nil` when the hint
     /// isn't about a catalog action.
-    var shortcutLine: String? {
+    @MainActor var shortcutLine: String? {
         guard let id = actionID, let action = ShortcutCatalog.action(id) else { return nil }
         return action.shortcutText ?? "No shortcut set"
     }

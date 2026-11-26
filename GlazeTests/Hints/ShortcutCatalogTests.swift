@@ -47,6 +47,7 @@ final class ShortcutCatalogTests: XCTestCase {
     }
 }
 
+@MainActor
 final class HintTests: XCTestCase {
     func testPlainHintHasNoShortcutLine() {
         XCTAssertNil(Hint(title: "Move").shortcutLine)

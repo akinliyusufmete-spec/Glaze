@@ -61,7 +61,7 @@ struct SizeSlider: View {
         value == value.rounded() ? String(Int(value)) : String(format: "%.1f", value)
     }
 
-    private static var keysLine: String {
+    @MainActor private static var keysLine: String {
         let down = ShortcutCatalog.action("sizeDown")?.shortcutText
         let up = ShortcutCatalog.action("sizeUp")?.shortcutText
         guard let down, let up else { return "" }

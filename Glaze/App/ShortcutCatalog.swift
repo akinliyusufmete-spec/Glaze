@@ -17,7 +17,8 @@ struct ShortcutAction: Identifiable {
     let name: KeyboardShortcuts.Name
 
     /// The binding as text (e.g. "⌥⌘D"), or `nil` when the user cleared it.
-    var shortcutText: String? {
+    // KeyboardShortcuts formats shortcuts on the main actor, so reading the text is main-actor too.
+    @MainActor var shortcutText: String? {
         guard let shortcut = KeyboardShortcuts.getShortcut(for: name) else { return nil }
         let text = shortcut.description.trimmingCharacters(in: .whitespaces)
         return text.isEmpty ? nil : text
