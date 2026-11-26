@@ -1,0 +1,87 @@
+name: Glaze
+
+options:
+  bundleIdPrefix: app.glaze
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+  generateEmptyDirectories: true
+
+packages:
+  KeyboardShortcuts:
+    url: https://github.com/sindresorhus/KeyboardShortcuts
+    from: 2.0.0
+
+settings:
+  base:
+    # DECISION: Swift 5 language mode with complete concurrency *checking* (warnings).
+    # The spec asks for Swift 5.10+; the Xcode 26 toolchain compiles 5-mode fine, and
+    # this keeps @MainActor discipline visible without Swift 6's hard errors on
+    # third-party AppKit/Carbon callbacks. Flip to "6" once all phases are in.
+    SWIFT_VERSION: "5.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    # DECISION: ad-hoc signing so `xcodebuild` works on any machine without a team.
+    CODE_SIGN_IDENTITY: "-"
+    CODE_SIGN_STYLE: Manual
+    DEVELOPMENT_TEAM: ""
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    DEAD_CODE_STRIPPING: YES
+
+targets:
+  Glaze:
+    type: application
+    platform: macOS
+    sources:
+      - path: Glaze
+    dependencies:
+      - package: KeyboardShortcuts
+    info:
+      path: Glaze/Info.plist
+      properties:
+        CFBundleDisplayName: Glaze
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        LSUIElement: true
+        LSMinimumSystemVersion: "$(MACOSX_DEPLOYMENT_TARGET)"
+        NSHumanReadableCopyright: ""
+        NSPrincipalClass: NSApplication
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.glaze.Glaze
+        PRODUCT_NAME: Glaze
+        MARKETING_VERSION: 0.1.0
+        CURRENT_PROJECT_VERSION: 1
+        GENERATE_INFOPLIST_FILE: NO
+        # DECISION: no App Sandbox for now. Phase 8's optional CGEventTap and the
+        # eyedropper/overlay behaviour are simpler to validate unsandboxed; revisit
+        # if the app is ever shipped through the Mac App Store.
+        ENABLE_APP_SANDBOX: NO
+        ENABLE_HARDENED_RUNTIME: YES
+
+  GlazeTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: GlazeTests
+    dependencies:
+      - target: Glaze
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.glaze.GlazeTests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Glaze.app/Contents/MacOS/Glaze"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+
+schemes:
+  Glaze:
+    build:
+      targets:
+        Glaze: all
+        GlazeTests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - GlazeTests
