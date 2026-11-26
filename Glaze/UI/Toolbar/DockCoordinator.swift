@@ -56,6 +56,18 @@ final class DockCoordinator: ModeSink {
         update(animated: true)
     }
 
+    /// Brings the toolbar out if it is hidden, in whatever way the current reveal mode allows.
+    /// Used when something that hangs off the toolbar (the color panel) needs it on screen.
+    func reveal() {
+        guard mode.tool != nil || preferences.toolbarReveal == .keybind else { return }
+        switch preferences.toolbarReveal {
+        case .always: if !preferences.showToolbar { preferences.showToolbar = true }
+        case .keybind: pinned = true
+        case .edge: edgeRevealed = true
+        }
+        update(animated: true)
+    }
+
     /// After a preference changes: re-lay-out both windows, then re-evaluate what should show.
     func reconfigure() {
         toolbar.relayout()

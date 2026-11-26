@@ -1,5 +1,6 @@
 import AppKit
 import Observation
+import SwiftUI
 
 /// Composition root. The only shared object in the app; everything else is
 /// created here and handed its dependencies explicitly.
@@ -210,7 +211,7 @@ final class AppEnvironment {
         case .toolbar:
             guard let toolbar else { return }
             // The panel hangs off the toolbar, so make sure the toolbar is up first.
-            if !toolbar.isVisible { toolbar.show() }
+            if !toolbar.isVisible { dock?.reveal() }
             colorPanel.show(anchor: toolbar.frame, preferred: toolbarSide)
         case .notepad:
             guard let notepad else { return }
