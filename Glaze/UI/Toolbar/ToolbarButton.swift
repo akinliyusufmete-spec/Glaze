@@ -20,7 +20,7 @@ struct ToolbarButton: View {
         .buttonStyle(.plain)
         .disabled(!isEnabled)
         .opacity(isEnabled ? 1 : 0.35)
-        .help(entry.tooltip)
+        .hint(entry.hint)
         .accessibilityLabel(entry.title)
     }
 

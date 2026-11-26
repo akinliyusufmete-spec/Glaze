@@ -129,3 +129,61 @@ final class ToolSettingsTests: XCTestCase {
         XCTAssertEqual(tool?.color.usingColorSpace(.sRGB)?.blueComponent ?? 0, 1, accuracy: 0.001)
     }
 }
+
+@MainActor
+final class ToolSettingsExtrasTests: XCTestCase {
+    private var defaults: UserDefaults!
+    private var suite = ""
+
+    override func setUp() {
+        suite = "glaze.tests.\(UUID().uuidString)"
+        defaults = UserDefaults(suiteName: suite)
+    }
+
+    override func tearDown() {
+        defaults.removePersistentDomain(forName: suite)
+    }
+
+    func testPresetWidths() {
+        XCTAssertEqual(ToolSettings.presetWidth(for: .pen), BrushPresets.pen.baseWidth)
+        XCTAssertEqual(ToolSettings.presetWidth(for: .highlighter), BrushPresets.highlighter.baseWidth)
+        XCTAssertEqual(ToolSettings.presetWidth(for: .eraser), EraserTool.defaultDiameter)
+        XCTAssertNil(ToolSettings.presetWidth(for: .laser), "the laser has no size")
+        XCTAssertNil(ToolSettings.presetWidth(for: .rectangle))
+    }
+
+    func testEffectiveWidthPrefersTheUsersChoice() {
+        let s = ToolSettings(defaults: defaults)
+        XCTAssertEqual(s.effectiveWidth(for: .pen), BrushPresets.pen.baseWidth)
+        s.setWidth(20, for: .pen)
+        XCTAssertEqual(s.effectiveWidth(for: .pen), 20)
+        XCTAssertNil(s.effectiveWidth(for: .laser))
+    }
+
+    func testLaserFadeDefaultsClampsAndPersists() {
+        let s = ToolSettings(defaults: defaults)
+        XCTAssertEqual(s.laserFadeDuration, BrushPresets.laser.fadeDuration ?? 0.8, accuracy: 1e-9)
+        s.setLaserFadeDuration(100)
+        XCTAssertEqual(s.laserFadeDuration, ToolSettings.laserFadeRange.upperBound)
+        s.setLaserFadeDuration(0)
+        XCTAssertEqual(s.laserFadeDuration, ToolSettings.laserFadeRange.lowerBound)
+        s.setLaserFadeDuration(1.25)
+        XCTAssertEqual(ToolSettings(defaults: defaults).laserFadeDuration, 1.25, accuracy: 1e-9)
+    }
+
+    func testEraserSizeFollowsTheSlider() {
+        let s = ToolSettings(defaults: defaults)
+        XCTAssertEqual(EraserTool(settings: s).radius, EraserTool.defaultDiameter / 2)
+        s.setWidth(40, for: .eraser)
+        XCTAssertEqual(EraserTool(settings: s).radius, 20)
+        XCTAssertEqual(EraserTool().radius, 8, "without settings the eraser keeps its old size")
+    }
+
+    func testEraserCursorTracksItsSize() {
+        let s = ToolSettings(defaults: defaults)
+        let eraser = EraserTool(settings: s)
+        let small = eraser.cursor.image.size.width
+        s.setWidth(60, for: .eraser)
+        XCTAssertGreaterThan(eraser.cursor.image.size.width, small)
+    }
+}

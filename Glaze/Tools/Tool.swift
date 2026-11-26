@@ -12,8 +12,15 @@ protocol Tool: AnyObject {
     /// Abandons the gesture without committing anything.
     func cancel(context: any ToolContext)
     func modifiersChanged(_ flags: NSEvent.ModifierFlags, context: any ToolContext)
+    /// The pointer moved with no button down (Draw mode only). Most tools ignore this.
+    func hover(_ point: InputPoint, context: any ToolContext)
+    /// The tool is being swapped out or Draw mode is ending: stop timers and clear anything
+    /// it is showing on the live layer.
+    func deactivate(context: any ToolContext)
 }
 
 extension Tool {
     func modifiersChanged(_ flags: NSEvent.ModifierFlags, context: any ToolContext) {}
+    func hover(_ point: InputPoint, context: any ToolContext) {}
+    func deactivate(context: any ToolContext) {}
 }

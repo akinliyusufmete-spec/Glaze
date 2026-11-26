@@ -9,22 +9,25 @@ final class ColorPanelController {
     private var appBeforePanel: NSRunningApplication?
     private var observers: [NSObjectProtocol] = []
     private let ownPID = ProcessInfo.processInfo.processIdentifier
+    private let preferences: Preferences
+    private var generation = 0
 
     /// Fired when the panel shows or hides.
     var onVisibilityChange: ((Bool) -> Void)?
     /// Fired when the panel gains or loses key status (i.e. while the hex field has the keyboard).
     var onKeyStatusChange: ((Bool) -> Void)?
 
-    init(model: ColorPanelModel) {
+    init(model: ColorPanelModel, preferences: Preferences, hints: HintCenter) {
         self.model = model
+        self.preferences = preferences
         panel = ColorPanelWindow(contentRect: .zero)
         panel.onCancel = { [weak self] in self?.hide() }
 
-        let host = NSHostingView(rootView: ColorPanelView(
+        let host = NSHostingView(rootView: AnyView(ColorPanelView(
             model: model,
             onEyedropper: { [weak self] in self?.pickFromScreen() },
             onFinishedTyping: { [weak self] in self?.releaseKeyboard() }
-        ))
+        ).environment(\.hintCenter, hints)))
         panel.contentView = host
         panel.setContentSize(host.fittingSize)
 
@@ -37,13 +40,19 @@ final class ColorPanelController {
         }
     }
 
-    var isVisible: Bool { panel.isVisible }
+    /// Whether the panel is up. A panel fading out already counts as hidden.
+    var isVisible: Bool { panel.isVisible && visibleFlag }
+    private var visibleFlag = true
+    /// Where the panel is (or is fading to), for keeping the toolbar open while the pointer is on it.
+    var frame: NSRect { panel.frame }
 
     /// Shows the panel next to `anchor` (the toolbar's screen frame).
     func show(anchor: NSRect, preferred: PanelPlacement.Side = .below) {
         if !panel.isVisible { rememberFrontApp() }
         place(anchor: anchor, preferred: preferred)
-        panel.orderFrontRegardless()
+        generation += 1
+        visibleFlag = true
+        PanelAnimator.fadeIn(panel, style: preferences.animationStyle, duration: preferences.animationDuration)
         onVisibilityChange?(true)
     }
 
@@ -56,10 +65,17 @@ final class ColorPanelController {
     }
 
     func hide() {
-        guard panel.isVisible else { return }
+        guard isVisible else { return }
         model.commit()
         let hadKeyboard = panel.isKeyWindow
-        panel.orderOut(nil)
+        generation += 1
+        visibleFlag = false
+        let current = generation
+        PanelAnimator.fadeOut(panel, style: preferences.animationStyle, duration: preferences.animationDuration) { [weak self] in
+            guard let self, self.generation == current else { return }
+            self.panel.orderOut(nil)
+            self.panel.alphaValue = 1
+        }
         if hadKeyboard { giveFocusBack() }
         onVisibilityChange?(false)
     }

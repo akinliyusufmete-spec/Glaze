@@ -25,12 +25,10 @@ private struct MenuContent: View {
         }
         Divider()
         Toggle("Show Mode HUD", isOn: Bindable(environment.preferences).showModeHUD)
-        Toggle("Show Toolbar", isOn: Binding(
-            get: { environment.preferences.showToolbar },
-            set: { _ in environment.toggleToolbar() }
-        ))
-        Button("Notepad (⌥⌘N)") { environment.toggleNotepad() }
-        Button("Color Panel") { environment.toggleColorPanel() }
+        Button(menuTitle("Show or Hide Toolbar", "toggleToolbar")) { environment.toggleToolbar() }
+        Button(menuTitle("Laser Pointer", "toggleLaser")) { environment.toggleLaser() }
+        Button(menuTitle("Notepad", "toggleNotepad")) { environment.toggleNotepad() }
+        Button(menuTitle("Color Panel", "toggleColorPanel")) { environment.toggleColorPanel() }
         Button("Pick Color from Screen") { environment.pickColorFromScreen() }
         Button("Brush Smaller") { environment.stepBrushSize(up: false) }
         Button("Brush Larger") { environment.stepBrushSize(up: true) }
@@ -42,6 +40,8 @@ private struct MenuContent: View {
         Divider()
         updateItems
         Divider()
+        Button("Settings…") { environment.openSettings() }
+            .keyboardShortcut(",")
         Button("Quit Glaze") { NSApp.terminate(nil) }
             .keyboardShortcut("q")
     }
@@ -70,5 +70,11 @@ private struct MenuContent: View {
             get: { environment.preferences.drawOverFullScreenGames },
             set: { environment.setDrawOverFullScreenGames($0) }
         ))
+    }
+
+    /// A menu title with the action's current keyboard shortcut, e.g. "Notepad (⌥⌘N)".
+    private func menuTitle(_ title: String, _ actionID: String) -> String {
+        guard let text = ShortcutCatalog.action(actionID)?.shortcutText else { return title }
+        return "\(title) (\(text))"
     }
 }

@@ -15,6 +15,7 @@ final class ToolSettings {
         static let recents = "palette.recents"
         static let fill = "palette.fill"
         static let widths = "tool.widths"
+        static let laserFade = "tool.laserFade"
     }
 
     /// The color strokes are drawn with. Always the selected slot's color.
@@ -24,6 +25,11 @@ final class ToolSettings {
     private(set) var recents: RecentColors
     /// Width overrides in points; a tool with no entry uses its preset's `baseWidth`.
     private(set) var widths: [ToolID: CGFloat]
+
+    /// Seconds the laser pointer's trail takes to fade once the pointer stops.
+    private(set) var laserFadeDuration: TimeInterval
+
+    static let laserFadeRange: ClosedRange<Double> = 0.2...3
 
     @ObservationIgnored private let defaults: UserDefaults
 
@@ -36,6 +42,8 @@ final class ToolSettings {
         widths = Dictionary(uniqueKeysWithValues: stored.compactMap { key, value in
             ToolID(rawValue: key).map { ($0, CGFloat(value)) }
         })
+        laserFadeDuration = Self.laserFadeRange.clamp(
+            Self.load(Double.self, Key.laserFade, from: defaults) ?? BrushPresets.laser.fadeDuration ?? 0.8)
     }
 
     // MARK: Colors
@@ -71,9 +79,25 @@ final class ToolSettings {
         save(recents, Key.recents)
     }
 
+    func setLaserFadeDuration(_ seconds: TimeInterval) {
+        laserFadeDuration = Self.laserFadeRange.clamp(seconds)
+        save(laserFadeDuration, Key.laserFade)
+    }
+
     // MARK: Widths
 
     func width(for tool: ToolID) -> CGFloat? { widths[tool] }
+
+    /// The width a tool has before the user changes it: the brush preset's, or the eraser's diameter.
+    /// `nil` for tools with no size (the laser, shapes yet to come).
+    static func presetWidth(for tool: ToolID) -> CGFloat? {
+        if tool == .eraser { return EraserTool.defaultDiameter }
+        guard let style = BrushPresets.preset(for: tool), !style.isTransient else { return nil }
+        return style.baseWidth
+    }
+
+    /// The width a tool draws with now: the user's choice, else the preset.
+    func effectiveWidth(for tool: ToolID) -> CGFloat? { widths[tool] ?? Self.presetWidth(for: tool) }
 
     func setWidth(_ width: CGFloat, for tool: ToolID) {
         widths[tool] = SizeStepper.clamped(Double(width)).cgFloat

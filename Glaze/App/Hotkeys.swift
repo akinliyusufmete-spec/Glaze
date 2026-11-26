@@ -4,6 +4,10 @@ import KeyboardShortcuts
 extension KeyboardShortcuts.Name {
     /// ⌥⌘D — toggle between Pointer and Draw.
     static let toggleDraw = Self("toggleDraw", default: .init(.d, modifiers: [.option, .command]))
+    /// ⌥⌘L — laser pointer on/off. ⌥⌘T — toolbar. ⌥⌘C — color panel.
+    static let toggleLaser = Self("toggleLaser", default: .init(.l, modifiers: [.option, .command]))
+    static let toggleToolbar = Self("toggleToolbar", default: .init(.t, modifiers: [.option, .command]))
+    static let toggleColorPanel = Self("toggleColorPanel", default: .init(.c, modifiers: [.option, .command]))
     /// ⌥⌘N — open or close the notepad. Global, and independent of Draw mode.
     static let toggleNotepad = Self("toggleNotepad", default: .init(.n, modifiers: [.option, .command]))
     /// ⌥⌘K — clear the display under the pointer (undoable).
@@ -19,6 +23,12 @@ extension KeyboardShortcuts.Name {
     static let toolMarker = Self("toolMarker", default: .init(.m))
     static let toolHighlighter = Self("toolHighlighter", default: .init(.h))
     static let toolEraser = Self("toolEraser", default: .init(.e))
+    static let toolLaser = Self("toolLaser", default: .init(.x))
+    /// No default key: these tools are one click away in the toolbar; bind a key in Settings if wanted.
+    static let toolPencil = Self("toolPencil")
+    static let toolCalligraphy = Self("toolCalligraphy")
+    static let toolNeon = Self("toolNeon")
+    static let toolDashed = Self("toolDashed")
     /// [ / ] — brush size down / up (while drawing).
     static let sizeDown = Self("sizeDown", default: .init(.leftBracket))
     static let sizeUp = Self("sizeUp", default: .init(.rightBracket))
@@ -47,8 +57,7 @@ final class Hotkeys: ModeSink {
     // so these have to be global hotkeys — and grabbing ⌘Z or "e" outside Draw would
     // break every other app.
     private static let captureOnly: [KeyboardShortcuts.Name] =
-        [.exitDraw, .undo, .redo, .toolPen, .toolMarker, .toolHighlighter, .toolEraser,
-         .sizeDown, .sizeUp, .eyedropper] + KeyboardShortcuts.Name.colorSlots
+        ShortcutCatalog.actions(in: .drawing).map(\.name)
 
     private var capturing = false
     /// DECISION: while a Glaze panel has the keyboard (the color panel's hex field, the notepad's
@@ -62,6 +71,9 @@ final class Hotkeys: ModeSink {
         // KeyboardShortcuts delivers on the main thread (Carbon event handler).
         on(.toggleDraw) { $0.modeController.toggle() }
         on(.toggleNotepad) { $0.environment?.toggleNotepad() }
+        on(.toggleLaser) { $0.environment?.toggleLaser() }
+        on(.toggleToolbar) { $0.environment?.toggleToolbar() }
+        on(.toggleColorPanel) { $0.environment?.toggleColorPanel() }
         on(.clearDisplay) { $0.environment?.clearCurrentDisplay() }
         on(.exitDraw) { $0.modeController.exitToPointer() }
         on(.undo) { $0.environment?.undo() }
@@ -70,6 +82,11 @@ final class Hotkeys: ModeSink {
         on(.toolMarker) { $0.modeController.select(tool: .marker) }
         on(.toolHighlighter) { $0.modeController.select(tool: .highlighter) }
         on(.toolEraser) { $0.modeController.select(tool: .eraser) }
+        on(.toolLaser) { $0.modeController.select(tool: .laser) }
+        on(.toolPencil) { $0.modeController.select(tool: .pencil) }
+        on(.toolCalligraphy) { $0.modeController.select(tool: .calligraphy) }
+        on(.toolNeon) { $0.modeController.select(tool: .neon) }
+        on(.toolDashed) { $0.modeController.select(tool: .dashed) }
         on(.sizeDown) { $0.environment?.stepBrushSize(up: false) }
         on(.sizeUp) { $0.environment?.stepBrushSize(up: true) }
         on(.eyedropper) { $0.environment?.pickColorFromScreen() }

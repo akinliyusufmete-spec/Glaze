@@ -13,6 +13,8 @@ import CoreGraphics
 struct WindowLevels: Equatable {
     let overlay: NSWindow.Level
     let panel: NSWindow.Level
+    /// Hover hints sit above every panel.
+    let hint: NSWindow.Level
 
     init(coverFullScreenGames: Bool) {
         let base = coverFullScreenGames
@@ -20,5 +22,6 @@ struct WindowLevels: Equatable {
             : NSWindow.Level.screenSaver.rawValue
         overlay = NSWindow.Level(rawValue: base)
         panel = NSWindow.Level(rawValue: base + 1)
+        hint = NSWindow.Level(rawValue: base + 2)
     }
 }

@@ -23,7 +23,8 @@ final class ToolRegistry {
                 register(id) { BrushTool(id: id, style: style, color: color) }
             }
         }
-        register(.eraser) { EraserTool() }
+        register(.eraser) { EraserTool(settings: settings) }
+        register(.laser) { LaserTool(settings: settings) }
     }
 
     func register(_ id: ToolID, factory: @escaping Factory) {

@@ -21,7 +21,9 @@ final class AppEnvironment {
     @ObservationIgnored private var notepad: NotepadController?
     /// Which window the color panel is currently attached to (it follows that window).
     @ObservationIgnored private var colorPanelAnchor: ColorPanelAnchor = .toolbar
-    @ObservationIgnored private var toolbarSink: ToolbarModeSink?
+    @ObservationIgnored private var hints: HintCenter?
+    @ObservationIgnored private var dock: DockCoordinator?
+    @ObservationIgnored private var settingsWindow: SettingsWindowController?
     @ObservationIgnored private var focusRestorer: FocusRestorer?
     @ObservationIgnored private var launchObserver: NSObjectProtocol?
     #if DEBUG
@@ -58,28 +60,41 @@ final class AppEnvironment {
         let hud = HUDController(preferences: preferences)
         let hotkeys = Hotkeys(modeController: modeController, environment: self)
 
+        let hints = HintCenter(preferences: preferences)
+        hints.dockEdge = { [weak self] in self?.preferences.toolbarPlacement.edge }
 
         let toolbarState = ToolbarState()
-        let colorPanel = ColorPanelController(model: ColorPanelModel(settings: toolSettings))
+        let colorPanel = ColorPanelController(model: ColorPanelModel(settings: toolSettings),
+                                              preferences: preferences, hints: hints)
         let toolbar = ToolbarController(
             entries: ToolbarEntry.defaults,
             actions: makeToolbarActions(),
             state: toolbarState,
-            settings: toolSettings
+            settings: toolSettings,
+            preferences: preferences,
+            hints: hints
         )
-        let toolbarSink = ToolbarModeSink(toolbar: toolbar, colorPanel: colorPanel,
-                                          state: toolbarState, preferences: preferences)
+        let handle = EdgeHandleController(preferences: preferences, hints: hints)
+        let dock = DockCoordinator(toolbar: toolbar, handle: handle, state: toolbarState, preferences: preferences)
+        dock.keepOpenRegions = { [weak self] in
+            guard let self, self.colorPanelAnchor == .toolbar, let panel = self.colorPanel, panel.isVisible else { return [] }
+            return [panel.frame.insetBy(dx: -10, dy: -10)]
+        }
+        dock.onToolbarHidden = { [weak self] in
+            // The color panel hangs off the toolbar; when the toolbar goes, it goes too.
+            if self?.colorPanelAnchor == .toolbar { self?.colorPanel?.hide() }
+        }
         colorPanel.onVisibilityChange = { toolbarState.isColorPanelVisible = $0 }
         colorPanel.onKeyStatusChange = { [weak hotkeys] in hotkeys?.setSuspended($0, by: "colorPanel") }
         toolbar.onMove = { [weak self] in
             guard let self, self.colorPanelAnchor == .toolbar,
                   let toolbar = self.toolbar, let panel = self.colorPanel, panel.isVisible else { return }
-            panel.place(anchor: toolbar.frame, preferred: .below)
+            panel.place(anchor: toolbar.frame, preferred: self.toolbarSide)
         }
 
         let notepad = NotepadController(
             model: NotepadModel(storage: NotebookStorage(url: NotebookStorage.defaultURL), registry: toolRegistry),
-            settings: toolSettings
+            settings: toolSettings, preferences: preferences, hints: hints
         )
         notepad.onKeyStatusChange = { [weak hotkeys] in hotkeys?.setSuspended($0, by: "notepad") }
         notepad.onColorRequest = { [weak self] in self?.toggleColorPanel(from: .notepad) }
@@ -98,16 +113,29 @@ final class AppEnvironment {
         modeController.attach(focusRestorer)
         modeController.attach(hotkeys)
         modeController.attach(hud)
-        modeController.attach(toolbarSink)
+        modeController.attach(dock)
 
         self.overlays = overlays
         self.focusRestorer = focusRestorer
         self.hud = hud
         self.hotkeys = hotkeys
+        self.hints = hints
         self.toolbar = toolbar
         self.colorPanel = colorPanel
         self.notepad = notepad
-        self.toolbarSink = toolbarSink
+        self.dock = dock
+        self.settingsWindow = SettingsWindowController(
+            level: { [weak self] in self?.currentLevels.panel ?? .glazePanel },
+            content: { [weak self] in
+                guard let self else { return AnyView(EmptyView()) }
+                return AnyView(SettingsView(
+                    preferences: self.preferences, toolSettings: self.toolSettings,
+                    resetToolbarPosition: { [weak self] in self?.resetToolbarPosition() },
+                    previewAnimation: { [weak self] in self?.dock?.preview() }
+                ))
+            }
+        )
+        preferences.onChange = { [weak self] in self?.preferencesChanged() }
         applyWindowLevels()
         #if DEBUG
         debugCommands = DebugCommands(environment: self)
@@ -152,12 +180,12 @@ final class AppEnvironment {
     var isColorPanelVisible: Bool { colorPanel?.isVisible ?? false }
 
     /// `[` / `]`: moves the active brush one rung along `SizeStepper.ladder`.
-    // DECISION: sizes are per brush (a wide highlighter shouldn't make the pen wide), and the
-    // eraser has no size control yet — it keeps its fixed radius.
+    // DECISION: sizes are per tool (a wide highlighter shouldn't make the pen wide). The laser has
+    // no size, so the keys do nothing while it is selected.
     func stepBrushSize(up: Bool) {
         let tool = modeController.mode.tool ?? modeController.lastTool
-        guard let preset = BrushPresets.preset(for: tool) else { return }
-        toolSettings.stepWidth(for: tool, presetWidth: preset.baseWidth, up: up)
+        guard let preset = ToolSettings.presetWidth(for: tool) else { return }
+        toolSettings.stepWidth(for: tool, presetWidth: preset, up: up)
     }
 
     /// Keys 1–9 (0-based index here).
@@ -183,7 +211,7 @@ final class AppEnvironment {
             guard let toolbar else { return }
             // The panel hangs off the toolbar, so make sure the toolbar is up first.
             if !toolbar.isVisible { toolbar.show() }
-            colorPanel.show(anchor: toolbar.frame, preferred: .below)
+            colorPanel.show(anchor: toolbar.frame, preferred: toolbarSide)
         case .notepad:
             guard let notepad else { return }
             colorPanel.show(anchor: notepad.frame, preferred: .right)
@@ -197,22 +225,51 @@ final class AppEnvironment {
 
     /// Experimental toggle: raise every Glaze window above exclusive-full-screen games.
     func setDrawOverFullScreenGames(_ enabled: Bool) {
-        preferences.drawOverFullScreenGames = enabled
-        applyWindowLevels()
+        preferences.drawOverFullScreenGames = enabled     // `onChange` re-applies the window levels
     }
 
     private func applyWindowLevels() {
-        let levels = WindowLevels(coverFullScreenGames: preferences.drawOverFullScreenGames)
+        let levels = currentLevels
         overlays?.setLevel(levels.overlay)
         hud?.setLevel(levels.panel)
         toolbar?.setLevel(levels.panel)
         colorPanel?.setLevel(levels.panel)
         notepad?.setLevel(levels.panel)
+        hints?.setLevel(levels.hint)
+        settingsWindow?.setLevel(levels.panel)
     }
 
-    func toggleToolbar() {
-        preferences.showToolbar.toggle()
-        toolbarSink?.refresh(mode: modeController.mode)
+    /// ⌥⌘T and the menu item. What it does depends on how the toolbar is set to appear.
+    func toggleToolbar() { dock?.toggle() }
+
+    /// ⌥⌘L: the laser pointer on, or back to Pointer mode when it is already the active tool.
+    func toggleLaser() {
+        if modeController.mode.tool == .laser {
+            modeController.exitToPointer()
+        } else {
+            modeController.select(tool: .laser)
+        }
+    }
+
+    func openSettings() { settingsWindow?.show() }
+
+    func resetToolbarPosition() {
+        UserDefaults.standard.removeObject(forKey: "Glaze.toolbarOrigin")
+        dock?.reconfigure()
+    }
+
+    // MARK: Preferences
+
+    private var currentLevels: WindowLevels {
+        WindowLevels(coverFullScreenGames: preferences.drawOverFullScreenGames)
+    }
+
+    /// Which side of the toolbar the color panel opens on, from where the toolbar is docked.
+    private var toolbarSide: PanelPlacement.Side { DockGeometry.attachedSide(for: preferences.toolbarPlacement) }
+
+    private func preferencesChanged() {
+        applyWindowLevels()
+        dock?.reconfigure()
     }
 
     private func makeToolbarActions() -> ToolbarActions {
