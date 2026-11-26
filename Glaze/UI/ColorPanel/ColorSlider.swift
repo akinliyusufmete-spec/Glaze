@@ -37,7 +37,7 @@ struct ColorSlider: View {
 
 private struct Checkerboard: View {
     var body: some View {
-        Canvas { ctx, size in
+        SwiftUI.Canvas { ctx, size in
             let cell: CGFloat = 5
             for row in 0..<Int(ceil(size.height / cell)) {
                 for col in 0..<Int(ceil(size.width / cell)) where (row + col) % 2 == 0 {
