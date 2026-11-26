@@ -48,3 +48,9 @@ final class ToolbarDefaultsTests: XCTestCase {
         XCTAssertTrue(ids.contains(ToolID.eraser.rawValue))
     }
 }
+
+final class ToolbarNotepadEntryTests: XCTestCase {
+    func testToolbarHasANotepadButton() {
+        XCTAssertTrue(ToolbarEntry.defaults.contains { $0.id == ToolbarActionID.notepad && $0.kind == .action })
+    }
+}

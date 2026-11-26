@@ -62,6 +62,15 @@ final class CanvasView: NSView, ToolContext {
     @available(*, unavailable)
     required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
 
+    /// When true and not capturing, the view is invisible to the mouse so views beneath it
+    /// (the notepad's text) get the clicks. The full-screen overlay leaves this off: it relies on
+    /// its window's `ignoresMouseEvents` instead.
+    var passesThroughWhenIdle = false
+
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        passesThroughWhenIdle && !isCapturing ? nil : super.hitTest(point)
+    }
+
     override var isOpaque: Bool { false }
     override var acceptsFirstResponder: Bool { true }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }

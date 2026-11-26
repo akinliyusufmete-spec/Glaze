@@ -41,6 +41,8 @@ final class HUDController: ModeSink {
         show(mode)
     }
 
+    func setLevel(_ level: NSWindow.Level) { panel.level = level }
+
     private func show(_ mode: AppMode) {
         hideWork?.cancel()
         generation += 1

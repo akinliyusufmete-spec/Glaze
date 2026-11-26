@@ -18,12 +18,17 @@ final class AppEnvironment {
     @ObservationIgnored private var hotkeys: Hotkeys?
     @ObservationIgnored private var toolbar: ToolbarController?
     @ObservationIgnored private var colorPanel: ColorPanelController?
+    @ObservationIgnored private var notepad: NotepadController?
+    /// Which window the color panel is currently attached to (it follows that window).
+    @ObservationIgnored private var colorPanelAnchor: ColorPanelAnchor = .toolbar
     @ObservationIgnored private var toolbarSink: ToolbarModeSink?
     @ObservationIgnored private var focusRestorer: FocusRestorer?
     @ObservationIgnored private var launchObserver: NSObjectProtocol?
     #if DEBUG
     @ObservationIgnored private var debugCommands: DebugCommands?
     #endif
+
+    private enum ColorPanelAnchor { case toolbar, notepad }
 
     static var isRunningTests: Bool {
         ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
@@ -65,10 +70,27 @@ final class AppEnvironment {
         let toolbarSink = ToolbarModeSink(toolbar: toolbar, colorPanel: colorPanel,
                                           state: toolbarState, preferences: preferences)
         colorPanel.onVisibilityChange = { toolbarState.isColorPanelVisible = $0 }
-        colorPanel.onKeyStatusChange = { [weak hotkeys] in hotkeys?.setSuspended($0) }
+        colorPanel.onKeyStatusChange = { [weak hotkeys] in hotkeys?.setSuspended($0, by: "colorPanel") }
         toolbar.onMove = { [weak self] in
-            guard let self, let toolbar = self.toolbar, let panel = self.colorPanel, panel.isVisible else { return }
-            panel.place(anchor: toolbar.frame)
+            guard let self, self.colorPanelAnchor == .toolbar,
+                  let toolbar = self.toolbar, let panel = self.colorPanel, panel.isVisible else { return }
+            panel.place(anchor: toolbar.frame, preferred: .below)
+        }
+
+        let notepad = NotepadController(
+            model: NotepadModel(storage: NotebookStorage(url: NotebookStorage.defaultURL), registry: toolRegistry),
+            settings: toolSettings
+        )
+        notepad.onKeyStatusChange = { [weak hotkeys] in hotkeys?.setSuspended($0, by: "notepad") }
+        notepad.onColorRequest = { [weak self] in self?.toggleColorPanel(from: .notepad) }
+        notepad.onMove = { [weak self] in
+            guard let self, self.colorPanelAnchor == .notepad,
+                  let notepad = self.notepad, let panel = self.colorPanel, panel.isVisible else { return }
+            panel.place(anchor: notepad.frame, preferred: .right)
+        }
+        notepad.onVisibilityChange = { [weak self] visible in
+            // The color panel hangs off the notepad while it is open; closing the pad closes it.
+            if !visible, self?.colorPanelAnchor == .notepad { self?.colorPanel?.hide() }
         }
 
         // Order matters on exit: overlays go click-through before focus is handed back.
@@ -84,7 +106,9 @@ final class AppEnvironment {
         self.hotkeys = hotkeys
         self.toolbar = toolbar
         self.colorPanel = colorPanel
+        self.notepad = notepad
         self.toolbarSink = toolbarSink
+        applyWindowLevels()
         #if DEBUG
         debugCommands = DebugCommands(environment: self)
         #endif
@@ -147,11 +171,43 @@ final class AppEnvironment {
         colorPanel?.pickFromScreen()
     }
 
-    func toggleColorPanel() {
-        guard let toolbar, let colorPanel else { return }
-        // The panel hangs off the toolbar, so make sure the toolbar is up first.
-        if !toolbar.isVisible { toolbar.show() }
-        colorPanel.toggle(anchor: toolbar.frame)
+    func toggleColorPanel() { toggleColorPanel(from: .toolbar) }
+
+    private func toggleColorPanel(from anchor: ColorPanelAnchor) {
+        guard let colorPanel else { return }
+        // Pressing the same button again closes the panel; the other window's button moves it.
+        if colorPanel.isVisible, colorPanelAnchor == anchor { return colorPanel.hide() }
+        colorPanelAnchor = anchor
+        switch anchor {
+        case .toolbar:
+            guard let toolbar else { return }
+            // The panel hangs off the toolbar, so make sure the toolbar is up first.
+            if !toolbar.isVisible { toolbar.show() }
+            colorPanel.show(anchor: toolbar.frame, preferred: .below)
+        case .notepad:
+            guard let notepad else { return }
+            colorPanel.show(anchor: notepad.frame, preferred: .right)
+        }
+    }
+
+    /// ⌥⌘N, the toolbar button or the menu. Works in Pointer mode: the notepad never needs Draw mode.
+    func toggleNotepad() { notepad?.toggle() }
+
+    var isNotepadVisible: Bool { notepad?.isVisible ?? false }
+
+    /// Experimental toggle: raise every Glaze window above exclusive-full-screen games.
+    func setDrawOverFullScreenGames(_ enabled: Bool) {
+        preferences.drawOverFullScreenGames = enabled
+        applyWindowLevels()
+    }
+
+    private func applyWindowLevels() {
+        let levels = WindowLevels(coverFullScreenGames: preferences.drawOverFullScreenGames)
+        overlays?.setLevel(levels.overlay)
+        hud?.setLevel(levels.panel)
+        toolbar?.setLevel(levels.panel)
+        colorPanel?.setLevel(levels.panel)
+        notepad?.setLevel(levels.panel)
     }
 
     func toggleToolbar() {
@@ -177,6 +233,7 @@ final class AppEnvironment {
         case ToolbarActionID.clear: clearCurrentDisplay()
         case ToolbarActionID.sizeDown: stepBrushSize(up: false)
         case ToolbarActionID.sizeUp: stepBrushSize(up: true)
+        case ToolbarActionID.notepad: toggleNotepad()
         default: break
         }
     }

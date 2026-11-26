@@ -4,6 +4,8 @@ import KeyboardShortcuts
 extension KeyboardShortcuts.Name {
     /// ⌥⌘D — toggle between Pointer and Draw.
     static let toggleDraw = Self("toggleDraw", default: .init(.d, modifiers: [.option, .command]))
+    /// ⌥⌘N — open or close the notepad. Global, and independent of Draw mode.
+    static let toggleNotepad = Self("toggleNotepad", default: .init(.n, modifiers: [.option, .command]))
     /// ⌥⌘K — clear the display under the pointer (undoable).
     static let clearDisplay = Self("clearDisplay", default: .init(.k, modifiers: [.option, .command]))
     /// Esc — leave Draw. Registered only while a capture mode is active, so Esc
@@ -49,15 +51,17 @@ final class Hotkeys: ModeSink {
          .sizeDown, .sizeUp, .eyedropper] + KeyboardShortcuts.Name.colorSlots
 
     private var capturing = false
-    /// DECISION: while the color panel's hex field has the keyboard, the plain keys must
-    /// type text ("E" and "1" are valid hex digits), so the capture-only set is switched off.
-    private var suspended = false
+    /// DECISION: while a Glaze panel has the keyboard (the color panel's hex field, the notepad's
+    /// text), the plain keys must type text ("E" and "1" are valid hex digits), so the capture-only
+    /// set is switched off. Several panels can ask, so each is tracked by name.
+    private var suspendedBy: Set<String> = []
 
     init(modeController: ModeController, environment: AppEnvironment) {
         self.modeController = modeController
         self.environment = environment
         // KeyboardShortcuts delivers on the main thread (Carbon event handler).
         on(.toggleDraw) { $0.modeController.toggle() }
+        on(.toggleNotepad) { $0.environment?.toggleNotepad() }
         on(.clearDisplay) { $0.environment?.clearCurrentDisplay() }
         on(.exitDraw) { $0.modeController.exitToPointer() }
         on(.undo) { $0.environment?.undo() }
@@ -80,14 +84,14 @@ final class Hotkeys: ModeSink {
         refresh()
     }
 
-    /// Called by the color panel when it gains or loses key status.
-    func setSuspended(_ suspended: Bool) {
-        self.suspended = suspended
+    /// Called by a panel when it gains or loses the keyboard.
+    func setSuspended(_ suspended: Bool, by owner: String) {
+        if suspended { suspendedBy.insert(owner) } else { suspendedBy.remove(owner) }
         refresh()
     }
 
     private func refresh() {
-        if capturing, !suspended {
+        if capturing, suspendedBy.isEmpty {
             KeyboardShortcuts.enable(Self.captureOnly)
         } else {
             KeyboardShortcuts.disable(Self.captureOnly)
