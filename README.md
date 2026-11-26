@@ -28,7 +28,7 @@ See `SPEC.md` for the design and `PHASE4_INTEGRATION.md` for the current status 
 
 ## Releasing (maintainers)
 
-Update nothing by hand: pushing a tag builds, packages and publishes a release.
+Update nothing by hand. Either push a tag, or open Actions → Release → Run workflow and enter a version; both build, package and publish a release.
 
 ```
 git tag v0.1.0
