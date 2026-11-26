@@ -11,13 +11,17 @@ final class ToolRegistry {
     /// LaserTool arrives in Phase 5.
     static let brushIDs: [ToolID] = [.pen, .marker, .highlighter, .pencil, .calligraphy, .neon, .dashed]
 
-    init() {
+    /// - Parameter settings: the shared color/size choices. Without them (tests) brushes use
+    ///   fixed colors: yellow for the highlighter, red for the rest.
+    init(settings: ToolSettings? = nil) {
         for id in Self.brushIDs {
             guard let style = BrushPresets.preset(for: id) else { continue }
-            // DECISION: until Phase 4's palette exists, the highlighter is yellow
-            // (a red highlighter would read as a marker) and the rest are red.
-            let color: NSColor = id == .highlighter ? .systemYellow : .systemRed
-            register(id) { BrushTool(id: id, style: style, color: color) }
+            if let settings {
+                register(id) { BrushTool(id: id, style: style, settings: settings) }
+            } else {
+                let color: NSColor = id == .highlighter ? .systemYellow : .systemRed
+                register(id) { BrushTool(id: id, style: style, color: color) }
+            }
         }
         register(.eraser) { EraserTool() }
     }

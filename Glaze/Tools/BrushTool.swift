@@ -6,29 +6,69 @@ import AppKit
 @MainActor
 final class BrushTool: Tool {
     let id: ToolID
+    /// The brush's preset. The width actually drawn may differ (see `currentStyle`).
     let style: BrushStyle
-    // DECISION: color stays fixed per tool until Phase 4 adds the palette.
-    let color: NSColor
+    /// Used when there are no `ToolSettings` (tests); otherwise the settings' stroke color wins.
+    private let fixedColor: NSColor
+    private let settings: ToolSettings?
 
-    private(set) lazy var cursor: NSCursor = BrushCursor.make(diameter: style.baseWidth, color: color)
+    // DECISION: color and width are read from `ToolSettings` when a stroke begins and kept
+    // for that stroke, so changing the color mid-drag never recolors a stroke in progress.
+    private var activeStyle: BrushStyle
+    private var activeColor: CGColor
+
+    private var currentColor: NSColor { settings?.strokeColor.nsColor ?? fixedColor }
+    private var currentStyle: BrushStyle {
+        guard let width = settings?.width(for: id) else { return style }
+        var s = style
+        s.baseWidth = width
+        return s
+    }
+
+    var color: NSColor { currentColor }
+
+    private var cachedCursor: (key: String, cursor: NSCursor)?
+    /// A ring that previews the brush size in the current color; rebuilt when either changes.
+    var cursor: NSCursor {
+        let width = currentStyle.baseWidth
+        let color = currentColor
+        let key = "\(width)-\(color.hashValue)"
+        if let cached = cachedCursor, cached.key == key { return cached.cursor }
+        let made = BrushCursor.make(diameter: width, color: color)
+        cachedCursor = (key, made)
+        return made
+    }
 
     private var strokeID = UUID()
     private var samples: [InputPoint] = []
     private var filter = OneEuroFilter()
     private var lastRaw: CGPoint?
     private var lastDirty: CGRect = .null
-    private var cgColor: CGColor { color.cgColor }
 
     var isDrawing: Bool { !samples.isEmpty }
 
     init(id: ToolID = .pen, style: BrushStyle = BrushPresets.pen, color: NSColor = .systemRed) {
         self.id = id
         self.style = style
-        self.color = color
+        self.fixedColor = color
+        self.settings = nil
+        self.activeStyle = style
+        self.activeColor = color.cgColor
+    }
+
+    init(id: ToolID, style: BrushStyle, settings: ToolSettings) {
+        self.id = id
+        self.style = style
+        self.fixedColor = settings.strokeColor.nsColor
+        self.settings = settings
+        self.activeStyle = style
+        self.activeColor = settings.strokeColor.cgColor
     }
 
     func begin(_ point: InputPoint, context: any ToolContext) {
         strokeID = UUID()
+        activeStyle = currentStyle
+        activeColor = currentColor.cgColor
         filter.reset()
         lastDirty = .null
         lastRaw = point.location
@@ -54,7 +94,7 @@ final class BrushTool: Tool {
             if point.location == lastRaw, samples.count > 1 { samples.removeLast() }
             samples.append(final)
         }
-        if style.autoStraighten, samples.count > 2,
+        if activeStyle.autoStraighten, samples.count > 2,
            PolylineGeometry.isNearlyStraight(samples.map(\.location)) {
             samples = [samples[0], samples[samples.count - 1]]
         }
@@ -72,7 +112,7 @@ final class BrushTool: Tool {
     }
 
     private func makeStroke() -> StrokeElement {
-        StrokeElement(id: strokeID, samples: samples, style: style, color: cgColor)
+        StrokeElement(id: strokeID, samples: samples, style: activeStyle, color: activeColor)
     }
 
     /// Only the tail of the stroke (and an end taper's reach) changes per
@@ -80,7 +120,7 @@ final class BrushTool: Tool {
     /// included because a taper that moved forward leaves the old one behind.
     private func publish(context: any ToolContext) {
         let stroke = makeStroke()
-        let tail = stroke.tailBounds(fromSample: samples.count - 3, extraLength: style.taper.end)
+        let tail = stroke.tailBounds(fromSample: samples.count - 3, extraLength: activeStyle.taper.end)
         context.showLive(stroke, dirty: tail.union(lastDirty))
         lastDirty = tail
     }
