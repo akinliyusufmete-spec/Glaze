@@ -64,7 +64,7 @@ final class HintCenter {
     }
 
     /// Where the bubble goes: offset from the pointer, away from the dock edge, and kept on screen.
-    static func frame(for size: CGSize, near mouse: CGPoint, edge: DockEdge?, in visible: CGRect) -> CGRect {
+    nonisolated static func frame(for size: CGSize, near mouse: CGPoint, edge: DockEdge?, in visible: CGRect) -> CGRect {
         let gap: CGFloat = 18
         var origin: CGPoint
         switch edge {
