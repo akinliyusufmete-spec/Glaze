@@ -1,0 +1,76 @@
+name: Release
+
+# Push a tag like v0.1.0 to build and publish a downloadable app on GitHub Releases.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-26
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Work out the version
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate the Xcode project
+        run: xcodegen generate
+
+      - name: Build (Release, ad-hoc signed)
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project Glaze.xcodeproj \
+            -scheme Glaze \
+            -configuration Release \
+            -derivedDataPath build \
+            MARKETING_VERSION="$VERSION" \
+            CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER" \
+            2>&1 | tail -n 40
+
+      - name: Check the app
+        run: |
+          APP=build/Build/Products/Release/Glaze.app
+          codesign --verify --deep --strict "$APP"
+          BUILT=$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$APP/Contents/Info.plist")
+          echo "Built version: $BUILT (tag: $VERSION)"
+          [ "$BUILT" = "$VERSION" ]
+
+      - name: Package .dmg and .zip
+        run: |
+          APP=build/Build/Products/Release/Glaze.app
+          mkdir -p dist dmg-root
+          ditto -c -k --sequesterRsrc --keepParent "$APP" "dist/Glaze-$VERSION.zip"
+          cp -R "$APP" dmg-root/
+          ln -s /Applications dmg-root/Applications
+          hdiutil create -volname "Glaze $VERSION" -srcfolder dmg-root -ov -format UDZO "dist/Glaze-$VERSION.dmg"
+          (cd dist && shasum -a 256 * > SHA256SUMS.txt)
+          ls -l dist
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cat > notes.md <<'NOTES'
+          ## Install
+
+          1. Download the `.dmg`, open it and drag **Glaze** into **Applications**.
+          2. Open Glaze from Applications. It lives in the menu bar (no Dock icon).
+          3. This build is not signed with an Apple Developer ID, so macOS warns the first time.
+             Open **System Settings → Privacy & Security**, scroll down, and click **Open Anyway**
+             next to the Glaze message. You only have to do this once.
+
+          Glaze checks GitHub for newer versions once a day and tells you in its menu when one exists.
+          NOTES
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --title "Glaze $VERSION" \
+            --notes-file notes.md \
+            --generate-notes
