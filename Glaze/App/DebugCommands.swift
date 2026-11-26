@@ -37,6 +37,7 @@ final class DebugCommands {
                 DebugPresets.draw(env.canvasStore, display: window.displayID, size: window.frame.size)
             }),
             ("toolbar", { $0.toggleToolbar() }),
+            ("notepad", { $0.toggleNotepad() }),
             ("colorpanel", { $0.toggleColorPanel() }),
             ("sizeup", { $0.stepBrushSize(up: true) }),
             ("sizedown", { $0.stepBrushSize(up: false) }),
@@ -96,6 +97,7 @@ final class DebugCommands {
                 + " recents=\(settings.recents.colors.count)"
                 + " widths=\(settings.widths.map { "\($0.key.rawValue)=\($0.value)" }.sorted())"
                 + " toolbar=\(environment.isToolbarVisible) colorPanel=\(environment.isColorPanelVisible)"
+                + " notepad=\(environment.isNotepadVisible)"
         )
         let store = environment.canvasStore
         let windows = environment.overlays?.windows ?? [:]

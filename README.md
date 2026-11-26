@@ -11,6 +11,27 @@ A macOS menu-bar app for drawing and annotating on top of your screen.
 
 Requires macOS 14 or later.
 
+## Notepad
+
+Press **⌥⌘N** (or use the toolbar's notepad button or the menu) to open a floating notepad. It works
+from Pointer mode — you don't have to be in Draw mode.
+
+- **Type** mode is a plain text editor; **Pen / Marker / Highlighter / Eraser** draw ink over the text.
+  Text and ink stay on the same page, so you can annotate your own notes.
+- Ink uses the same colors, sizes and brushes as the screen overlay; the swatch opens the color panel.
+- Several pages: previous / next, new page, delete page. Undo / redo / clear apply to the current page's ink.
+- Everything is saved automatically to `~/Library/Application Support/Glaze/notebook.json` and restored on launch.
+- Esc or ⌥⌘N closes it, and the keyboard goes back to the app you were in.
+
+## Full-screen apps and games
+
+Glaze's overlay, toolbar, color panel and notepad appear on every Space, including full-screen ones,
+so they work over native full-screen apps, full-screen browser tabs and borderless-window games.
+
+Some games take over the display exclusively and hide ordinary windows. For those, turn on
+**Draw Over Full-Screen Games (experimental)** in the menu. It raises Glaze above the display shield;
+as a side effect Glaze can then cover system alerts, so leave it off unless you need it.
+
 ## Updates
 
 Glaze checks GitHub Releases once a day (turn it off in the menu: *Check for Updates Automatically*)

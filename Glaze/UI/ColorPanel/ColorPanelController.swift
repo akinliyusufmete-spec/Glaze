@@ -40,18 +40,18 @@ final class ColorPanelController {
     var isVisible: Bool { panel.isVisible }
 
     /// Shows the panel next to `anchor` (the toolbar's screen frame).
-    func show(anchor: NSRect) {
+    func show(anchor: NSRect, preferred: PanelPlacement.Side = .below) {
         if !panel.isVisible { rememberFrontApp() }
-        place(anchor: anchor)
+        place(anchor: anchor, preferred: preferred)
         panel.orderFrontRegardless()
         onVisibilityChange?(true)
     }
 
     /// Moves a visible panel to follow its anchor.
-    func place(anchor: NSRect) {
+    func place(anchor: NSRect, preferred: PanelPlacement.Side = .below) {
         let screen = NSScreen.screens.first { $0.frame.intersects(anchor) } ?? NSScreen.main
         let frame = PanelPlacement.frame(panelSize: panel.frame.size, anchor: anchor,
-                                         visible: screen?.visibleFrame ?? anchor, preferred: .below)
+                                         visible: screen?.visibleFrame ?? anchor, preferred: preferred)
         panel.setFrame(frame, display: false)
     }
 
@@ -64,7 +64,11 @@ final class ColorPanelController {
         onVisibilityChange?(false)
     }
 
-    func toggle(anchor: NSRect) { isVisible ? hide() : show(anchor: anchor) }
+    func setLevel(_ level: NSWindow.Level) { panel.level = level }
+
+    func toggle(anchor: NSRect, preferred: PanelPlacement.Side = .below) {
+        isVisible ? hide() : show(anchor: anchor, preferred: preferred)
+    }
 
     /// Samples a pixel from anywhere on screen (any app); the result becomes the edited color.
     func pickFromScreen() {

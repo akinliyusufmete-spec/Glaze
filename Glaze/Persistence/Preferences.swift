@@ -13,6 +13,7 @@ final class Preferences {
         static let showModeHUD = "showModeHUD"
         static let showToolbar = "showToolbar"
         static let automaticUpdateChecks = "automaticUpdateChecks"
+        static let drawOverFullScreenGames = "drawOverFullScreenGames"
     }
 
     @ObservationIgnored private let defaults: UserDefaults
@@ -31,11 +32,17 @@ final class Preferences {
         didSet { defaults.set(automaticUpdateChecks, forKey: Key.automaticUpdateChecks) }
     }
 
+    /// Experimental: raise Glaze's windows above exclusive-full-screen games (see `WindowLevels`).
+    var drawOverFullScreenGames: Bool {
+        didSet { defaults.set(drawOverFullScreenGames, forKey: Key.drawOverFullScreenGames) }
+    }
+
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
-        defaults.register(defaults: [Key.showModeHUD: true, Key.showToolbar: true, Key.automaticUpdateChecks: true])
+        defaults.register(defaults: [Key.showModeHUD: true, Key.showToolbar: true, Key.automaticUpdateChecks: true, Key.drawOverFullScreenGames: false])
         showModeHUD = defaults.bool(forKey: Key.showModeHUD)
         showToolbar = defaults.bool(forKey: Key.showToolbar)
         automaticUpdateChecks = defaults.bool(forKey: Key.automaticUpdateChecks)
+        drawOverFullScreenGames = defaults.bool(forKey: Key.drawOverFullScreenGames)
     }
 }

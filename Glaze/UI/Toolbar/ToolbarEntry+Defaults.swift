@@ -7,6 +7,7 @@ enum ToolbarActionID {
     static let clear = "clear"
     static let sizeDown = "sizeDown"
     static let sizeUp = "sizeUp"
+    static let notepad = "notepad"
 }
 
 extension ToolbarEntry {
@@ -28,5 +29,8 @@ extension ToolbarEntry {
         ToolbarEntry(id: ToolbarActionID.undo, kind: .action, title: "Undo", symbol: "arrow.uturn.backward", shortcutHint: "⌘Z"),
         ToolbarEntry(id: ToolbarActionID.redo, kind: .action, title: "Redo", symbol: "arrow.uturn.forward", shortcutHint: "⇧⌘Z"),
         ToolbarEntry(id: ToolbarActionID.clear, kind: .action, title: "Clear", symbol: "trash", shortcutHint: "⌥⌘K"),
+        .separator("sep-notepad"),
+        ToolbarEntry(id: ToolbarActionID.notepad, kind: .action, title: "Notepad", symbol: "note.text",
+                     fallbackSymbol: "square.and.pencil", shortcutHint: "⌥⌘N"),
     ]
 }

@@ -42,6 +42,8 @@ final class ToolbarController {
     var frame: NSRect { panel.frame }
     var window: NSWindow { panel }
 
+    func setLevel(_ level: NSWindow.Level) { panel.level = level }
+
     func show() { panel.orderFrontRegardless() }
     func hide() { panel.orderOut(nil) }
     func toggle() { isVisible ? hide() : show() }

@@ -27,6 +27,16 @@ final class CanvasStore {
         onChange?(display)
     }
 
+    /// Replaces a canvas wholesale with `elements` and a fresh, empty history. For loading saved
+    /// work: the loaded elements are not undoable steps.
+    func load(_ elements: [any Element], on display: DisplayID) {
+        var canvas = Canvas()
+        canvas.replaceAll(with: elements)
+        canvases[display] = canvas
+        histories[display] = History()
+        onChange?(display)
+    }
+
     @discardableResult
     func undo(on display: DisplayID) -> Bool {
         guard histories[display]?.canUndo == true else { return false }

@@ -10,6 +10,7 @@ final class OverlayManager: ModeSink {
     private let registry: ToolRegistry
     private var currentMode: AppMode = .pointer
     private var currentTool: ToolID = .pen
+    private(set) var level: NSWindow.Level = .screenSaver
     // Lives for the app's lifetime (owned by AppEnvironment), so the observer is
     // never removed; the closure holds `self` weakly.
     private var screenObserver: NSObjectProtocol?
@@ -31,6 +32,12 @@ final class OverlayManager: ModeSink {
         ) { [weak self] _ in
             MainActor.assumeIsolated { self?.rebuildWindows() }
         }
+    }
+
+    /// Moves every overlay (and any created later) to `level`. See `WindowLevels`.
+    func setLevel(_ level: NSWindow.Level) {
+        self.level = level
+        windows.values.forEach { $0.level = level }
     }
 
     func apply(mode: AppMode, previous: AppMode?) {
@@ -67,6 +74,7 @@ final class OverlayManager: ModeSink {
             } else {
                 let window = OverlayWindow(screen: screen, displayID: id, store: store, registry: registry)
                 window.canvas.onEscape = { [weak self] in self?.onEscape?() }
+                window.level = level
                 window.canvas.toolID = currentTool
                 window.setCapturing(currentMode.capturesInput)
                 windows[id] = window

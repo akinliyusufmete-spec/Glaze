@@ -57,3 +57,28 @@ final class CanvasStoreTests: XCTestCase {
         XCTAssertEqual(changes, [side, side, side])
     }
 }
+
+@MainActor
+final class CanvasStoreLoadTests: XCTestCase {
+    func testLoadReplacesTheCanvasWithoutUndoHistoryAndNotifies() {
+        let store = CanvasStore()
+        var notified: [CanvasStore.DisplayID] = []
+        store.onChange = { notified.append($0) }
+        let stroke = StrokeElement(points: [.zero, CGPoint(x: 10, y: 10)], color: RGBAColor.black.cgColor, width: 3)
+
+        store.load([stroke], on: 7)
+
+        XCTAssertEqual(store.canvas(for: 7).elements.map(\.id), [stroke.id])
+        XCTAssertFalse(store.canUndo(on: 7))
+        XCTAssertEqual(notified, [7])
+    }
+
+    func testLoadDiscardsExistingWorkAndHistory() {
+        let store = CanvasStore()
+        let old = StrokeElement(points: [.zero, CGPoint(x: 5, y: 5)], color: RGBAColor.black.cgColor, width: 3)
+        store.perform(AddElement(element: old), on: 1)
+        store.load([], on: 1)
+        XCTAssertTrue(store.canvas(for: 1).isEmpty)
+        XCTAssertFalse(store.canUndo(on: 1))
+    }
+}

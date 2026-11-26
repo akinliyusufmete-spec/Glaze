@@ -29,6 +29,7 @@ private struct MenuContent: View {
             get: { environment.preferences.showToolbar },
             set: { _ in environment.toggleToolbar() }
         ))
+        Button("Notepad (⌥⌘N)") { environment.toggleNotepad() }
         Button("Color Panel") { environment.toggleColorPanel() }
         Button("Pick Color from Screen") { environment.pickColorFromScreen() }
         Button("Brush Smaller") { environment.stepBrushSize(up: false) }
@@ -65,5 +66,9 @@ private struct MenuContent: View {
         }
         Button("Check for Updates…") { Task { await checker.check() } }
         Toggle("Check for Updates Automatically", isOn: Bindable(environment.preferences).automaticUpdateChecks)
+        Toggle("Draw Over Full-Screen Games (experimental)", isOn: Binding(
+            get: { environment.preferences.drawOverFullScreenGames },
+            set: { environment.setDrawOverFullScreenGames($0) }
+        ))
     }
 }
