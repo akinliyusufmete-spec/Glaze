@@ -11,6 +11,7 @@ import Observation
 final class Preferences {
     private enum Key {
         static let showModeHUD = "showModeHUD"
+        static let showToolbar = "showToolbar"
     }
 
     @ObservationIgnored private let defaults: UserDefaults
@@ -19,9 +20,15 @@ final class Preferences {
         didSet { defaults.set(showModeHUD, forKey: Key.showModeHUD) }
     }
 
+    /// Whether the toolbar appears in Draw mode.
+    var showToolbar: Bool {
+        didSet { defaults.set(showToolbar, forKey: Key.showToolbar) }
+    }
+
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
-        defaults.register(defaults: [Key.showModeHUD: true])
+        defaults.register(defaults: [Key.showModeHUD: true, Key.showToolbar: true])
         showModeHUD = defaults.bool(forKey: Key.showModeHUD)
+        showToolbar = defaults.bool(forKey: Key.showToolbar)
     }
 }

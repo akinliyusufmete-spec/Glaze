@@ -25,6 +25,14 @@ private struct MenuContent: View {
         }
         Divider()
         Toggle("Show Mode HUD", isOn: Bindable(environment.preferences).showModeHUD)
+        Toggle("Show Toolbar", isOn: Binding(
+            get: { environment.preferences.showToolbar },
+            set: { _ in environment.toggleToolbar() }
+        ))
+        Button("Color Panel") { environment.toggleColorPanel() }
+        Button("Pick Color from Screen") { environment.pickColorFromScreen() }
+        Button("Brush Smaller") { environment.stepBrushSize(up: false) }
+        Button("Brush Larger") { environment.stepBrushSize(up: true) }
         Divider()
         Button("Undo") { environment.undo() }
         Button("Redo") { environment.redo() }

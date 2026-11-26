@@ -36,6 +36,13 @@ final class DebugCommands {
                 guard let window = Self.windowUnderMouse(env) else { return }
                 DebugPresets.draw(env.canvasStore, display: window.displayID, size: window.frame.size)
             }),
+            ("toolbar", { $0.toggleToolbar() }),
+            ("colorpanel", { $0.toggleColorPanel() }),
+            ("sizeup", { $0.stepBrushSize(up: true) }),
+            ("sizedown", { $0.stepBrushSize(up: false) }),
+            ("slot1", { $0.selectColorSlot(0) }),
+            ("slot5", { $0.selectColorSlot(4) }),
+            ("eyedropper", { $0.pickColorFromScreen() }),
             ("undo", { $0.undo() }),
             ("redo", { $0.redo() }),
             ("clear", { $0.clearCurrentDisplay() }),
@@ -81,6 +88,15 @@ final class DebugCommands {
                 + " front=\(front?.localizedName ?? "nil")(\(front?.processIdentifier ?? 0))"
                 + " keyWindow=\(NSApp.keyWindow.map { String(describing: type(of: $0)) } ?? "nil")",
         ]
+        let settings = environment.toolSettings
+        lines.append(
+            "GLAZE-DEBUG   stroke=\(settings.strokeColor.hexString(includeAlpha: true))"
+                + " fill=\(settings.fillColor.hexString(includeAlpha: true))"
+                + " slot=\(settings.slots.selectedIndex + 1)"
+                + " recents=\(settings.recents.colors.count)"
+                + " widths=\(settings.widths.map { "\($0.key.rawValue)=\($0.value)" }.sorted())"
+                + " toolbar=\(environment.isToolbarVisible) colorPanel=\(environment.isColorPanelVisible)"
+        )
         let store = environment.canvasStore
         let windows = environment.overlays?.windows ?? [:]
         for (id, window) in windows.sorted(by: { $0.key < $1.key }) {
