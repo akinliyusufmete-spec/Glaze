@@ -11,6 +11,7 @@ final class AppEnvironment {
     @ObservationIgnored let canvasStore = CanvasStore()
     @ObservationIgnored let toolSettings: ToolSettings
     @ObservationIgnored let toolRegistry: ToolRegistry
+    let updateChecker = UpdateChecker(currentVersion: UpdateChecker.bundleVersion())
 
     @ObservationIgnored private(set) var overlays: OverlayManager?
     @ObservationIgnored private var hud: HUDController?
@@ -87,6 +88,9 @@ final class AppEnvironment {
         #if DEBUG
         debugCommands = DebugCommands(environment: self)
         #endif
+        if preferences.automaticUpdateChecks {
+            Task { await updateChecker.checkIfDue() }
+        }
     }
 
     // DECISION: undo, redo and clear act on the display under the pointer —

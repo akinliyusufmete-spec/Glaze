@@ -39,7 +39,31 @@ private struct MenuContent: View {
         Button("Clear This Display") { environment.clearCurrentDisplay() }
         Button("Clear All Displays") { environment.clearAllDisplays() }
         Divider()
+        updateItems
+        Divider()
         Button("Quit Glaze") { NSApp.terminate(nil) }
             .keyboardShortcut("q")
+    }
+
+    @ViewBuilder private var updateItems: some View {
+        let checker = environment.updateChecker
+        Text("Glaze \(checker.currentVersion.description)")
+        switch checker.state {
+        case let .available(release):
+            Button("Download Glaze \(release.version.description)…") {
+                NSWorkspace.shared.open(release.downloadURL ?? release.pageURL)
+            }
+            Button("What's New…") { NSWorkspace.shared.open(release.pageURL) }
+        case .checking:
+            Text("Checking for updates…")
+        case .upToDate:
+            Text("You're up to date")
+        case let .failed(message):
+            Text("Update check failed: \(message)")
+        case .idle:
+            EmptyView()
+        }
+        Button("Check for Updates…") { Task { await checker.check() } }
+        Toggle("Check for Updates Automatically", isOn: Bindable(environment.preferences).automaticUpdateChecks)
     }
 }
