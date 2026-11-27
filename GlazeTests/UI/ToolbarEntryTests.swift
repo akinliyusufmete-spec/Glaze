@@ -18,9 +18,12 @@ final class ToolbarEntryTests: XCTestCase {
         XCTAssertNil(e.resolvedSymbol)
     }
 
-    func testTooltipIncludesShortcut() {
-        XCTAssertEqual(ToolbarEntry(id: "a", title: "Pen", symbol: "pencil", shortcutHint: "P").tooltip, "Pen (P)")
-        XCTAssertEqual(ToolbarEntry(id: "a", title: "Pen", symbol: "pencil").tooltip, "Pen")
+    func testHintCarriesTitleDetailAndShortcutAction() {
+        let withKey = ToolbarEntry(id: "a", title: "Pen", detail: "Draws.", symbol: "pencil", shortcutAction: "toolPen").hint
+        XCTAssertEqual(withKey, Hint(title: "Pen", detail: "Draws.", actionID: "toolPen"))
+        let without = ToolbarEntry(id: "a", title: "Pen", symbol: "pencil").hint
+        XCTAssertNil(without.detail)
+        XCTAssertNil(without.actionID)
     }
 }
 
@@ -46,6 +49,25 @@ final class ToolbarDefaultsTests: XCTestCase {
         let ids = Set(ToolbarEntry.defaults.map(\.id))
         for id in ToolRegistry.brushIDs { XCTAssertTrue(ids.contains(id.rawValue), "\(id)") }
         XCTAssertTrue(ids.contains(ToolID.eraser.rawValue))
+    }
+}
+
+final class ToolbarHintCoverageTests: XCTestCase {
+    func testEveryButtonHasAnExplanationAndARealShortcutAction() {
+        for e in ToolbarEntry.defaults where e.kind != .separator {
+            XCTAssertFalse(e.detail.isEmpty, "\(e.id) needs a hover explanation")
+            XCTAssertNotNil(e.shortcutAction.flatMap(ShortcutCatalog.action), "\(e.id) points at an unknown shortcut")
+        }
+    }
+
+    func testToolbarOffersTheLaser() {
+        XCTAssertTrue(ToolbarEntry.defaults.contains { $0.id == ToolID.laser.rawValue && $0.kind == .tool })
+    }
+
+    func testBrushSizeIsASliderNotButtons() {
+        let ids = Set(ToolbarEntry.defaults.map(\.id))
+        XCTAssertFalse(ids.contains(ToolbarActionID.sizeUp))
+        XCTAssertFalse(ids.contains(ToolbarActionID.sizeDown))
     }
 }
 

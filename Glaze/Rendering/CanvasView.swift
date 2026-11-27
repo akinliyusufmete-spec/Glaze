@@ -14,7 +14,10 @@ final class CanvasView: NSView, ToolContext {
     var isCapturing = false {
         didSet {
             guard isCapturing != oldValue else { return }
-            if !isCapturing { endGesture() }
+            if !isCapturing {
+                endGesture()
+                tool.deactivate(context: self)
+            }
             window?.invalidateCursorRects(for: self)
         }
     }
@@ -29,6 +32,7 @@ final class CanvasView: NSView, ToolContext {
             // DECISION: switching tools mid-drag commits what was drawn so far
             // rather than throwing it away; it's one undo step either way.
             endGesture()
+            tool.deactivate(context: self)
             tool = registry.makeTool(toolID)
             applyCursor()
         }
@@ -158,7 +162,10 @@ final class CanvasView: NSView, ToolContext {
 
     override func cursorUpdate(with event: NSEvent) { applyCursor() }
     override func mouseEntered(with event: NSEvent) { applyCursor() }
-    override func mouseMoved(with event: NSEvent) { applyCursor() }
+    override func mouseMoved(with event: NSEvent) {
+        applyCursor()
+        if isCapturing { tool.hover(InputPoint(event: event, in: self), context: self) }
+    }
     override func mouseExited(with event: NSEvent) {
         if isCapturing { NSCursor.arrow.set() }
     }

@@ -12,31 +12,32 @@ struct ToolbarEntry: Identifiable, Equatable {
     let id: String
     let kind: Kind
     let title: String
+    /// One line explaining what the button does; shown in its hover hint.
+    let detail: String
     /// Preferred SF Symbol name.
     let symbol: String
     /// Used when `symbol` doesn't exist on the running macOS version.
     let fallbackSymbol: String?
-    /// Shown in the tooltip, e.g. "P".
-    let shortcutHint: String?
+    /// Id of the `ShortcutCatalog` action whose keybinding the hint shows.
+    let shortcutAction: String?
 
-    init(id: String, kind: Kind = .tool, title: String, symbol: String,
-         fallbackSymbol: String? = nil, shortcutHint: String? = nil) {
+    init(id: String, kind: Kind = .tool, title: String, detail: String = "", symbol: String,
+         fallbackSymbol: String? = nil, shortcutAction: String? = nil) {
         self.id = id
         self.kind = kind
         self.title = title
+        self.detail = detail
         self.symbol = symbol
         self.fallbackSymbol = fallbackSymbol
-        self.shortcutHint = shortcutHint
+        self.shortcutAction = shortcutAction
     }
 
     static func separator(_ id: String) -> ToolbarEntry {
         ToolbarEntry(id: id, kind: .separator, title: "", symbol: "")
     }
 
-    var tooltip: String {
-        guard let hint = shortcutHint, !hint.isEmpty else { return title }
-        return "\(title) (\(hint))"
-    }
+    /// The hover hint: name, explanation and the live keybinding.
+    var hint: Hint { Hint(title: title, detail: detail.isEmpty ? nil : detail, actionID: shortcutAction) }
 
     /// First symbol name that exists on this system, else `nil`.
     var resolvedSymbol: String? {

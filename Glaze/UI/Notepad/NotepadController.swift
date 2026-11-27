@@ -11,6 +11,8 @@ final class NotepadController {
     let model: NotepadModel
     private let panel = NotepadWindow()
     private let defaults: UserDefaults
+    private let preferences: Preferences
+    private var generation = 0
     private var appBeforePad: NSRunningApplication?
     private var observers: [NSObjectProtocol] = []
     private let ownPID = ProcessInfo.processInfo.processIdentifier
@@ -24,15 +26,17 @@ final class NotepadController {
     /// Fired when the pad's color swatch is pressed.
     var onColorRequest: (() -> Void)?
 
-    init(model: NotepadModel, settings: ToolSettings, defaults: UserDefaults = .standard) {
+    init(model: NotepadModel, settings: ToolSettings, preferences: Preferences, hints: HintCenter,
+         defaults: UserDefaults = .standard) {
         self.model = model
         self.defaults = defaults
+        self.preferences = preferences
 
-        let host = NSHostingView(rootView: NotepadView(
+        let host = NSHostingView(rootView: AnyView(NotepadView(
             model: model, settings: settings,
             onClose: { [weak self] in self?.hide() },
             onColor: { [weak self] in self?.onColorRequest?() }
-        ))
+        ).environment(\.hintCenter, hints)))
         host.frame.size = NotepadWindow.size
         panel.contentView = host
         panel.setContentSize(NotepadWindow.size)
@@ -56,15 +60,19 @@ final class NotepadController {
         })
     }
 
-    var isVisible: Bool { panel.isVisible }
+    /// Whether the pad is up. A pad fading out already counts as hidden.
+    var isVisible: Bool { panel.isVisible && visibleFlag }
+    private var visibleFlag = false
     var frame: NSRect { panel.frame }
 
     func setLevel(_ level: NSWindow.Level) { panel.level = level }
 
     func show() {
-        if !panel.isVisible {
+        if !visibleFlag || !panel.isVisible {
             rememberFrontApp()
-            panel.orderFrontRegardless()
+            generation += 1
+            visibleFlag = true
+            PanelAnimator.fadeIn(panel, style: preferences.animationStyle, duration: preferences.animationDuration)
             onVisibilityChange?(true)
         }
         // Opening the pad to type should let the user type straight away.
@@ -72,10 +80,17 @@ final class NotepadController {
     }
 
     func hide() {
-        guard panel.isVisible else { return }
+        guard isVisible else { return }
         model.flush()
         let hadKeyboard = panel.isKeyWindow
-        panel.orderOut(nil)
+        generation += 1
+        visibleFlag = false
+        let current = generation
+        PanelAnimator.fadeOut(panel, style: preferences.animationStyle, duration: preferences.animationDuration) { [weak self] in
+            guard let self, self.generation == current else { return }
+            self.panel.orderOut(nil)
+            self.panel.alphaValue = 1
+        }
         if hadKeyboard { giveFocusBack() }
         onVisibilityChange?(false)
     }

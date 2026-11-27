@@ -131,13 +131,14 @@ final class ToolTests: XCTestCase {
         XCTAssertEqual(registry.makeTool(.rectangle).id, .pen)
     }
 
-    func testRegistryRegistersEveryBrushButTheLaser() {
+    func testRegistryRegistersEveryBrushAndTheLaser() {
         let registry = ToolRegistry()
         for id in ToolRegistry.brushIDs {
             XCTAssertTrue(registry.isImplemented(id), "\(id)")
             XCTAssertEqual(registry.makeTool(id).id, id)
         }
-        XCTAssertFalse(registry.isImplemented(.laser), "LaserTool arrives in Phase 5")
+        XCTAssertTrue(registry.isImplemented(.laser))
+        XCTAssertTrue(registry.makeTool(.laser) is LaserTool)
     }
 
     func testRegistryRegisterOverridesFallback() {

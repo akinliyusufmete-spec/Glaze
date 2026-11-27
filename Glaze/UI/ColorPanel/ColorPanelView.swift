@@ -38,7 +38,7 @@ struct ColorPanelView: View {
                     .onSubmit(applyHex)
 
                 Button(action: onEyedropper) { Image(systemName: "eyedropper") }
-                    .help("Pick a color from the screen (C)")
+                    .hint(action: "eyedropper")
             }
 
             swatchRow(title: "Slots", colors: model.slots.colors, selected: model.slots.selectedIndex) { i in
@@ -68,7 +68,7 @@ struct ColorPanelView: View {
             }
             Button { model.swapStrokeAndFill() } label: { Image(systemName: "arrow.left.arrow.right") }
                 .buttonStyle(.plain)
-                .help("Swap stroke and fill")
+                .hint(Hint(title: "Swap stroke and fill", detail: "Stroke is the line color; fill is used by shapes."))
             targetButton("Fill", color: model.settings.fillColor, isOn: model.target == .fill) {
                 model.target = .fill
             }
@@ -121,7 +121,7 @@ struct ColorPanelView: View {
                             .frame(width: 18, height: 18)
                     }
                     .buttonStyle(.plain)
-                    .help(selected != nil ? "Slot \(i + 1)" : c.hexString())
+                    .hint(selected != nil ? Hint(action: "colorSlot\(i + 1)") : Hint(title: c.hexString(), detail: "A recently used color. Click to use it."))
                 }
             }
         }

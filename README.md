@@ -11,6 +11,26 @@ A macOS menu-bar app for drawing and annotating on top of your screen.
 
 Requires macOS 14 or later.
 
+## Toolbar, hints and settings
+
+- **Hover hints.** Rest the pointer on any button for its name, a one-line explanation and its current
+  keyboard shortcut. Rebind a key in Settings and the hint follows.
+- **Brush size** is a slider on the toolbar (small sizes get most of the travel). `[` and `]` still step it.
+  Each tool remembers its own size, including the eraser.
+- **Settings…** (menu bar → Settings…, ⌘,) has four tabs:
+  - *Toolbar*: dock it to the **top, bottom, left or right** edge, or leave it floating. Choose how it
+    appears: always while drawing, with a **keyboard shortcut**, or by **tapping a handle on the screen edge**
+    (like the iOS Dock; it tucks away again after a delay you set).
+  - *Animation*: none, fade, slide, or slide and fade, with a duration slider and a Preview button.
+  - *Shortcuts*: every shortcut can be rebound or reset, grouped into "anywhere" and "while drawing".
+  - *General*: hint delay, laser fade time, mode pill, full-screen-game mode, update checks.
+
+## Laser pointer
+
+Pick **Laser pointer** in the toolbar, press **X** while drawing, or press **⌥⌘L** from anywhere. The cursor
+becomes a glowing red dot and leaves a red trail that fades shortly after you stop moving (default 0.8 s;
+change it in Settings → General). Nothing is drawn onto the canvas, so it never shows up in undo.
+
 ## Notepad
 
 Press **⌥⌘N** (or use the toolbar's notepad button or the menu) to open a floating notepad. It works

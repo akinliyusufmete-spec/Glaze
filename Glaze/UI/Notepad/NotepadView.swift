@@ -8,9 +8,11 @@ struct NotepadView: View {
 
     private static let paper = Color(red: 0.99, green: 0.97, blue: 0.91)
     private static let typeEntry = ToolbarEntry(
-        id: "note.type", title: "Type", symbol: "text.cursor", fallbackSymbol: "character.cursor.ibeam")
+        id: "note.type", title: "Type", detail: "Click in the page to type. Switch to a pen to draw over your text.",
+        symbol: "text.cursor", fallbackSymbol: "character.cursor.ibeam")
     private static let clearEntry = ToolbarEntry(
-        id: "note.clear", kind: .action, title: "Clear ink", symbol: "scribble.variable", fallbackSymbol: "trash")
+        id: "note.clear", kind: .action, title: "Clear ink", detail: "Removes the drawing on this page. Your text stays.",
+        symbol: "scribble.variable", fallbackSymbol: "trash")
     private static let drawTools: [ToolbarEntry] = [ToolID.pen, .marker, .highlighter, .eraser].compactMap { id in
         ToolbarEntry.defaults.first { $0.id == id.rawValue }
     }
@@ -46,7 +48,7 @@ struct NotepadView: View {
                 )
             Button(action: onClose) { Image(systemName: "xmark").font(.system(size: 11, weight: .bold)) }
                 .buttonStyle(.plain)
-                .help("Close (⌥⌘N)")
+                .hint(Hint(title: "Close notepad", detail: "Your notes are saved automatically.", actionID: "toggleNotepad"))
         }
     }
 
@@ -60,6 +62,8 @@ struct NotepadView: View {
                     if let tool = ToolID(rawValue: entry.id) { model.mode = .draw(tool) }
                 }
             }
+            Divider().frame(height: 18).padding(.horizontal, 3)
+            SizeSlider(tool: model.mode.tool, settings: settings, vertical: false, length: 64)
             Divider().frame(height: 18).padding(.horizontal, 3)
             ToolbarButton(entry: Self.undoEntry, isSelected: false, isEnabled: model.canUndoInk, action: model.undoInk)
             ToolbarButton(entry: Self.redoEntry, isSelected: false, isEnabled: model.canRedoInk, action: model.redoInk)
@@ -75,7 +79,7 @@ struct NotepadView: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .help("Ink color")
+            .hint(Hint(title: "Ink color", detail: "Opens the color panel."))
         }
     }
 
@@ -97,17 +101,18 @@ struct NotepadView: View {
         HStack(spacing: 10) {
             Button { model.goPrevious() } label: { Image(systemName: "chevron.left") }
                 .disabled(!model.notebook.canGoPrevious)
-                .help("Previous page")
+                .hint(Hint(title: "Previous page"))
             Text("Page \(model.notebook.selectedIndex + 1) of \(model.notebook.pageCount)")
                 .font(.system(size: 12)).monospacedDigit().frame(minWidth: 90)
             Button { model.goNext() } label: { Image(systemName: "chevron.right") }
                 .disabled(!model.notebook.canGoNext)
-                .help("Next page")
+                .hint(Hint(title: "Next page"))
             Spacer(minLength: 0)
             Button { model.addPage() } label: { Image(systemName: "plus") }
-                .help("New page")
+                .hint(Hint(title: "New page", detail: "Adds an empty page after this one."))
             Button { model.deleteCurrentPage() } label: { Image(systemName: "trash") }
-                .help(model.notebook.pageCount == 1 ? "Clear this page" : "Delete this page")
+                .hint(Hint(title: model.notebook.pageCount == 1 ? "Clear this page" : "Delete this page",
+                           detail: "Removes the text and the ink on this page."))
         }
         .buttonStyle(.plain)
     }

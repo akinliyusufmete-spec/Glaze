@@ -5,17 +5,21 @@ struct ToolbarView: View {
     let actions: ToolbarActions
     let state: ToolbarState
     let settings: ToolSettings
+    let placement: ToolbarPlacement
+
+    private var vertical: Bool { placement.isVertical }
+    private var selectedTool: ToolID? { state.selectedToolID.flatMap(ToolID.init) }
 
     var body: some View {
-        HStack(spacing: 2) {
-            WindowDragHandle()
-                .frame(width: 14, height: 30)
-                .overlay(Image(systemName: "line.3.vertical").font(.system(size: 9)).opacity(0.4).allowsHitTesting(false))
+        let layout = vertical ? AnyLayout(VStackLayout(spacing: 2)) : AnyLayout(HStackLayout(spacing: 2))
+        layout {
+            // Only a floating toolbar can be dragged; a docked one is anchored to its edge.
+            if placement == .floating { dragHandle }
 
             ForEach(entries) { entry in
                 switch entry.kind {
                 case .separator:
-                    Divider().frame(height: 18).padding(.horizontal, 3)
+                    separator
                 case .tool:
                     ToolbarButton(entry: entry, isSelected: state.selectedToolID == entry.id, isEnabled: true) {
                         actions.selectTool(entry.id)
@@ -28,14 +32,31 @@ struct ToolbarView: View {
                 }
             }
 
-            Divider().frame(height: 18).padding(.horizontal, 3)
+            separator
+            SizeSlider(tool: selectedTool, settings: settings, vertical: vertical)
+            separator
             colorSwatch
         }
-        .padding(.horizontal, 6)
-        .padding(.vertical, 5)
+        .padding(.horizontal, vertical ? 5 : 6)
+        .padding(.vertical, vertical ? 6 : 5)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
         .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.primary.opacity(0.12)))
         .fixedSize()
+    }
+
+    private var dragHandle: some View {
+        WindowDragHandle()
+            .frame(width: vertical ? 30 : 14, height: vertical ? 14 : 30)
+            .overlay(Image(systemName: vertical ? "line.3.horizontal" : "line.3.vertical")
+                .font(.system(size: 9)).opacity(0.4).allowsHitTesting(false))
+            .hint(Hint(title: "Move", detail: "Drag to move the toolbar. Choose a screen edge in Settings to dock it instead."))
+    }
+
+    private var separator: some View {
+        Rectangle()
+            .fill(Color.primary.opacity(0.18))
+            .frame(width: vertical ? 18 : 1, height: vertical ? 1 : 18)
+            .padding(vertical ? .vertical : .horizontal, 3)
     }
 
     private var colorSwatch: some View {
@@ -52,7 +73,7 @@ struct ToolbarView: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .help("Color (C picks from screen)")
+        .hint(action: "toggleColorPanel")
         .accessibilityLabel("Color")
     }
 }

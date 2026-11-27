@@ -7,9 +7,24 @@ import AppKit
 @MainActor
 final class EraserTool: Tool {
     let id: ToolID = .eraser
-    let radius: CGFloat = 8
+    static let defaultDiameter: CGFloat = 16
 
-    private(set) lazy var cursor: NSCursor = BrushCursor.make(diameter: radius * 2, color: .systemGray)
+    private let settings: ToolSettings?
+
+    init(settings: ToolSettings? = nil) {
+        self.settings = settings
+    }
+
+    /// Half the eraser's diameter, which the size slider sets through `ToolSettings`.
+    var radius: CGFloat { (settings?.width(for: .eraser) ?? Self.defaultDiameter) / 2 }
+
+    private var cachedCursor: (radius: CGFloat, cursor: NSCursor)?
+    var cursor: NSCursor {
+        if let cached = cachedCursor, cached.radius == radius { return cached.cursor }
+        let made = BrushCursor.make(diameter: radius * 2, color: .systemGray)
+        cachedCursor = (radius, made)
+        return made
+    }
 
     private var lastPoint: CGPoint?
     private(set) var pending: Set<UUID> = []
